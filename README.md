@@ -11,7 +11,7 @@ This feature is not thoroughly tested, use at your own risk
 ## Tutorial
 I strongly advise to follow and read the whole instructions, to prevent confusion. (It won't take long)
 ## First Time Setup:
-Download MogiTableBot\exe from https://github.com/nolanimations/8DX-Mogi-Table-Bot/releases.
+Download MogiTableBot.exe from https://github.com/nolanimations/8DX-Mogi-Table-Bot/releases.
 
 If you're planning to use the OBS Overlay, download the 2 fonts aswell, and install them.
 
