@@ -1,4 +1,13 @@
 # Mogi Table Bot
+
+# Highlight Tag
+
+This fork adds the ability to submit your own Tag, and it will be highlighted in yellow on the OBS overlay. It will also be highlighted by asterisks in the clipboard output.
+
+![Highlight Tag](https://github.com/user-attachments/assets/cdca82c9-2297-4090-bf9b-77121acf066a)
+
+This feature is not thoroughly tested, use at your own risk
+
 ## Tutorial
 I strongly advise to follow and read the whole instructions, to prevent confusion. (It won't take long)
 ## First Time Setup:
