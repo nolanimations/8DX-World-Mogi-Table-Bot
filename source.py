@@ -192,7 +192,7 @@ autocopy = "Disabled"
 using_obs_virtual_cam = False
 obs_overlay_active = False
 cap = None
-
+my_tag = ""
 
 def get_config_path():
     home_dir = os.path.expanduser("~")
@@ -211,6 +211,8 @@ def load_settings():
                 autocopy = settings.get("autocopy", autocopy)
                 using_obs_virtual_cam = settings.get("using_obs_virtual_cam", using_obs_virtual_cam)
                 obs_overlay_active = settings.get("obs_overlay_active", obs_overlay_active)
+                global my_tag
+                my_tag = settings.get("my_tag", my_tag)
         else:
             save_settings()
     except Exception:
@@ -225,7 +227,8 @@ def save_settings():
         "twitchhotkey": twitchhotkey,
         "autocopy": autocopy,
         "using_obs_virtual_cam": using_obs_virtual_cam,
-        "obs_overlay_active": obs_overlay_active
+        "obs_overlay_active": obs_overlay_active,
+        "my_tag": my_tag
     }
     with open(config_path, "w") as file:
         json.dump(settings, file)
@@ -294,7 +297,7 @@ smallerfont = customtkinter.CTkFont(family="DS-Digital", size=30, weight="bold")
 
 infotext = customtkinter.CTkTextbox(tabview.tab("Info"), width=620, height=250)
 infotext.grid(row=0, column=0, padx=(20, 0), pady=(20, 0), sticky="nsew")
-infotext.insert("0.0", "Press Hotkey once you're on the sorted race results screen or the points finished adding up\nOnly enter the first Letter of Tag for DC Points (in this format: A10 B10 C10 D10 E10 F10)\nUse the normal Hotkey if youre using OBS method or watching Fullscreen (recommended)\nUse the Twitch Hotkey if youre watching twitch with chat opened (highly experimental)\nTwitch Mode might not work if youre not on Chrome and dont have something in your bookmarks \n(might not even work then)\n\nMade by tarek\nusing https://gb.hlorenzi.com/table\n\nDiscord: 9tarek\nin case of questions\nv2.0.2")
+infotext.insert("0.0", "Press Hotkey once you're on the sorted race results screen or the points finished adding up\nOnly enter the first Letter of Tag for DC Points (in this format: A10 B10 C10 D10 E10 F10)\nUse the normal Hotkey if youre using OBS method or watching Fullscreen (recommended)\nUse the Twitch Hotkey if youre watching twitch with chat opened (highly experimental)\nTwitch Mode might not work if youre not on Chrome and dont have something in your bookmarks \n(might not even work then)\n\nMade by tarek\nusing https://gb.hlorenzi.com/table\n\nDiscord: 9tarek\nin case of questions\nv2.1")
 infotext.configure(state="disabled")
 
 
@@ -311,6 +314,35 @@ auto_copy_menu = customtkinter.CTkOptionMenu(tabview.tab("Settings"), values=["D
 auto_copy_menu.grid(row=1, column=1, pady=(0, 0))
 auto_copy_menu.set(autocopy)
 
+# Add own Tag
+my_tag_label = customtkinter.CTkLabel(
+    tabview.tab("Settings"),
+    text="My Tag (single letter)",
+    anchor="center"
+)
+my_tag_label.grid(row=2, column=1, pady=(10, 0))
+
+my_tag_field = customtkinter.CTkEntry(
+    tabview.tab("Settings"),
+    placeholder_text="e.g. A"
+)
+my_tag_field.grid(row=3, column=1, pady=(0, 0))
+if my_tag:
+    my_tag_field.insert(0, my_tag)
+
+def set_my_tag():
+    global my_tag
+    my_tag = my_tag_field.get().strip().upper()
+    save_settings()
+    if obs_overlay_active:
+        update_obs_overlay(driver)
+
+my_tag_button = customtkinter.CTkButton(
+    tabview.tab("Settings"),
+    text="Submit Tag",
+    command=set_my_tag
+)
+my_tag_button.grid(row=4, column=1, pady=(0, 10))
 
 
 def set_dc_points(driver):
@@ -395,27 +427,27 @@ def fill_in_tags(driver):
 
 
 dc_points_label = customtkinter.CTkLabel(tabview.tab("Settings"), text="DC Points")
-dc_points_label.grid(row=2, column=1, pady=(10, 0))
+dc_points_label.grid(row=5, column=1, pady=(10, 0))
 
 dc_points_field = customtkinter.CTkEntry(tabview.tab("Settings"), placeholder_text="e.g. A6 B10 C2")
-dc_points_field.grid(row=3, column=1, pady=(0, 0))
+dc_points_field.grid(row=6, column=1, pady=(0, 0))
 
 
 
 button_frame_settings = customtkinter.CTkFrame(tabview.tab("Settings"))
-button_frame_settings.grid(row=4, column=1, pady=(10, 0))
+button_frame_settings.grid(row=7, column=1, pady=(10, 0))
 
 fill_in_tags_button = customtkinter.CTkButton(button_frame_settings, text="Insert Tags", command=lambda: fill_in_tags(driver))
-fill_in_tags_button.grid(row=1, column=1, pady=(10, 0))
+fill_in_tags_button.grid(row=4, column=1, pady=(10, 0))
 
 dc_points_clear = customtkinter.CTkButton(button_frame_settings, text="Clear", command=lambda: clear_dc_points(driver))
-dc_points_clear.grid(row=0, column=0, padx=(5, 5))
+dc_points_clear.grid(row=3, column=0, padx=(5, 5))
 
 roomcrash_button = customtkinter.CTkButton(button_frame_settings, text="Room Crash", command=lambda: roomcrash(driver))
-roomcrash_button.grid(row=0, column=2, padx=(5, 5))
+roomcrash_button.grid(row=3, column=2, padx=(5, 5))
 
 dc_points_submit = customtkinter.CTkButton(button_frame_settings, text="Submit", command=lambda: set_dc_points(driver))
-dc_points_submit.grid(row=0, column=1, padx=(5, 5))
+dc_points_submit.grid(row=3, column=1, padx=(5, 5))
 
 
 def change_hotkey():
@@ -466,9 +498,9 @@ def set_twitch_hotkey(event):
 
     
 hotkeys_label = customtkinter.CTkLabel(tabview.tab("Settings"), text="Hotkeys")
-hotkeys_label.grid(row=5, column=1, pady=(10, 0))    
+hotkeys_label.grid(row=8, column=1, pady=(10, 0))    
 button_frame_hotkeys = customtkinter.CTkFrame(tabview.tab("Settings"))
-button_frame_hotkeys.grid(row=6, column=1, pady=(0, 0))    
+button_frame_hotkeys.grid(row=9, column=1, pady=(0, 0))    
 
 change_hotkey_button = customtkinter.CTkButton(button_frame_hotkeys, text="Change Hotkey", command=change_hotkey)
 change_hotkey_button.grid(row=0, column=0, padx=(5, 5))
@@ -477,7 +509,7 @@ if hotkey:
     status_label = customtkinter.CTkLabel(button_frame_hotkeys, text="Current: " + hotkey, anchor="w")
 else:
     status_label = customtkinter.CTkLabel(button_frame_hotkeys, text="Current: None", anchor="w")
-status_label.grid(row=1, column=0, padx=0, pady=(0, 0))
+status_label.grid(row=3, column=0, padx=0, pady=(0, 0))
 
 change_twitch_hotkey_button = customtkinter.CTkButton(button_frame_hotkeys, text="Change Twitch Hotkey", command=change_twitch_hotkey)
 change_twitch_hotkey_button.grid(row=0, column=1, padx=(5, 5))
@@ -486,7 +518,7 @@ if twitchhotkey:
     twitch_status_label = customtkinter.CTkLabel(button_frame_hotkeys, text="Current: " + twitchhotkey, anchor="w")
 else:
     twitch_status_label = customtkinter.CTkLabel(button_frame_hotkeys, text="Current: None", anchor="w")
-twitch_status_label.grid(row=1, column=1, padx=0, pady=(0, 0))
+twitch_status_label.grid(row=3, column=1, padx=0, pady=(0, 0))
 
 
 image_label = customtkinter.CTkLabel(tabview.tab("Table Bot"), text="")
@@ -527,6 +559,7 @@ def send_to_clipboard():
     win32clipboard.CloseClipboard()
 
 def copy_scores_to_clipboard(driver):
+    global my_tag
     scores = driver.find_element(By.TAG_NAME, "textarea")
     scoresvalue = scores.get_attribute("value")
     scoresfr = {}
@@ -549,7 +582,7 @@ def copy_scores_to_clipboard(driver):
     sortedscores = sorted(scoresfr.items(), key=lambda x: x[1], reverse=True)
     total_score = sum(scoresfr.values())
 
-    out = " || ".join([f"{key} {value}" for key, value in sortedscores])
+    out = " || ".join([f"{'**' + key +'**' if key == my_tag else key} {value}" for key, value in sortedscores])
     if ((total_score % 82) == 0):
         out += f" || @{12 - int(total_score / 82)}"
     else:
@@ -644,7 +677,7 @@ def upload_screenshot(driver):
         screenshot.save(screenshot_data, format="PNG")
         screenshot_data.seek(0)
 
-        temp_screenshot_path = os.path.join(os.getcwd(), datetime.now().strftime("%Y-%m-%d %H-%M-%S.png"))
+        temp_screenshot_path = os.path.join(os.path.expanduser("~"), datetime.now().strftime("%Y-%m-%d %H-%M-%S.png"))
         with open(temp_screenshot_path, "wb") as temp_screenshot_file:
             temp_screenshot_file.write(screenshot_data.read())
     else:
@@ -736,7 +769,7 @@ def upload_screenshot_twitch(driver):
     screenshot_data.seek(0)
 
 
-    temp_screenshot_path = os.path.join(os.getcwd(), datetime.now().strftime("%Y-%m-%d %H-%M-%S"))
+    temp_screenshot_path = os.path.join(os.path.expanduser("~"), datetime.now().strftime("%Y-%m-%d %H-%M-%S"))
     with open(temp_screenshot_path, "wb") as temp_screenshot_file:
         temp_screenshot_file.write(screenshot_data.read())
 
@@ -851,7 +884,7 @@ def capture_image_from_obs_virtual_camera():
     # Check the actual resolution of the captured frame
     height, width, _ = frame.shape
 
-    temp_screenshot_path = os.path.join(os.getcwd(), datetime.now().strftime("%Y-%m-%d %H-%M-%S.png"))
+    temp_screenshot_path = os.path.join(os.path.expanduser("~"), datetime.now().strftime("%Y-%m-%d %H-%M-%S.png"))
 
     # Save the captured frame as a PNG file in full resolution
     if width == 1920 and height == 1080:
@@ -885,7 +918,7 @@ def toggle_using_obs_virtual_cam():
         using_obs_virtual_cam = False
 
 using_obs_virtual_cam_checkbox = customtkinter.CTkCheckBox(tabview.tab("Settings"), command=toggle_using_obs_virtual_cam, text="Using OBS Virtual Camera")
-using_obs_virtual_cam_checkbox.grid(row=9, column=1, pady=(15, 0))
+using_obs_virtual_cam_checkbox.grid(row=12, column=1, pady=(15, 0))
 
 
 
@@ -900,7 +933,7 @@ placeholder_4v4_imagetk = ImageTk.PhotoImage(Image.open(BytesIO(base64.b64decode
 
 
 def update_obs_overlay(driver):
-    global obs_overlay_window
+    global obs_overlay_window, my_tag
     scores = driver.find_element(By.TAG_NAME, "textarea")
     scoresvalue = scores.get_attribute("value")
     scoresfr = {}
@@ -941,14 +974,16 @@ def update_obs_overlay(driver):
 
     if len(tags) == 6: #2v2
         clear_imagetk = customtkinter.CTkImage(dark_image=(Image.new("RGB", (780, 125), "#008000")))
-        clear_label = customtkinter.CTkLabel(master=obs_overlay_window, width=780, height=125, image=clear_imagetk)
+        clear_label = customtkinter.CTkLabel(master=obs_overlay_window, width=780, height=125, image=clear_imagetk, text="")
         clear_label.place(x=0, y=0)
         imageholder_canvas = customtkinter.CTkCanvas(master=obs_overlay_window, width=780, height=125, bg="green", highlightthickness = 0)
         imageholder_canvas.place(x=0, y=0)
         imageholder_canvas.create_image((0, 0), image=placeholder_2v2_imagetk, anchor="nw")
         for i in range(6): 
+            tag = tags[i]
+            color = "yellow" if tag == my_tag else "white"
             x_position = (i * 130) + 65  
-            imageholder_canvas.create_text((x_position, 22), text=f"{tags[i]}", font=tagsfont, anchor="center", fill="white")
+            imageholder_canvas.create_text((x_position, 22), text=f"{tags[i]}", font=tagsfont, anchor="center", fill=color)
             imageholder_canvas.create_text((x_position, 67), text=f"{teamscores[i]}", font=scoresfont, anchor="center", fill="white")
 
         for i in range(5): 
@@ -966,7 +1001,7 @@ def update_obs_overlay(driver):
             imageholder_canvas.create_text((40,(90 + 35 // 2)), text=f"-{missingpoints}", font=smallerfont, anchor="center", fill="red")
     elif len(tags) == 4: #3v3
         clear_imagetk = customtkinter.CTkImage(dark_image=(Image.new("RGB", (780, 125), "#008000")))
-        clear_label = customtkinter.CTkLabel(master=obs_overlay_window, width=780, height=125, image=clear_imagetk)
+        clear_label = customtkinter.CTkLabel(master=obs_overlay_window, width=780, height=125, image=clear_imagetk, text="")
         clear_label.place(x=0, y=0)
 
         imageholder_canvas = customtkinter.CTkCanvas(master=obs_overlay_window, width=520, height=125, bg="green", highlightthickness=0)
@@ -974,8 +1009,10 @@ def update_obs_overlay(driver):
         imageholder_canvas.create_image((0, 0), image=placeholder_3v3_imagetk, anchor="nw")
         
         for i in range(4):
+            tag = tags[i]
+            color = "yellow" if tag == my_tag else "white"
             x_position = (i * 130) + 65  
-            imageholder_canvas.create_text((x_position, 22), text=f"{tags[i]}", font=tagsfont, anchor="center", fill="white")
+            imageholder_canvas.create_text((x_position, 22), text=f"{tags[i]}", font=tagsfont, anchor="center", fill=color)
             imageholder_canvas.create_text((x_position, 67), text=f"{teamscores[i]}", font=scoresfont, anchor="center", fill="white")
         
         for i in range(3): 
@@ -994,7 +1031,7 @@ def update_obs_overlay(driver):
             imageholder_canvas.create_text((40,(90 + 35 // 2)), text=f"-{missingpoints}", font=smallerfont, anchor="center", fill="red")
     elif len(tags) == 3: #4v4
         clear_imagetk = customtkinter.CTkImage(dark_image=(Image.new("RGB", (780, 125), "#008000")))
-        clear_label = customtkinter.CTkLabel(master=obs_overlay_window, width=780, height=125, image=clear_imagetk)
+        clear_label = customtkinter.CTkLabel(master=obs_overlay_window, width=780, height=125, image=clear_imagetk, text="")
         clear_label.place(x=0, y=0)
         imageholder_canvas = customtkinter.CTkCanvas(master=obs_overlay_window, width=390, height=125, bg="green", highlightthickness=0)
         imageholder_canvas.place(x=((780 - 390) // 2), y=0)
@@ -1004,8 +1041,10 @@ def update_obs_overlay(driver):
         positions = [65, 195, 325]  
 
         for i in range(3): 
+            tag = tags[i]
+            color = "yellow" if tag == my_tag else "white"
             x_position = positions[i]
-            imageholder_canvas.create_text((x_position, 22), text=f"{tags[i]}", font=tagsfont, anchor="center", fill="white")
+            imageholder_canvas.create_text((x_position, 22), text=f"{tags[i]}", font=tagsfont, anchor="center", fill=color)
             imageholder_canvas.create_text((x_position, 67), text=f"{teamscores[i]}", font=scoresfont, anchor="center", fill="white")
 
         for i in range(2): 
@@ -1024,7 +1063,7 @@ def update_obs_overlay(driver):
             imageholder_canvas.create_text((30, (90 + 35 // 2)), text=f"-{missingpoints}", font=smallerfont, anchor="center", fill="red")
     elif len(tags) == 2: #6v6
         clear_imagetk = customtkinter.CTkImage(dark_image=(Image.new("RGB", (780, 125), "#008000")))
-        clear_label = customtkinter.CTkLabel(master=obs_overlay_window, width=780, height=125, image=clear_imagetk)
+        clear_label = customtkinter.CTkLabel(master=obs_overlay_window, width=780, height=125, image=clear_imagetk, text="")
         clear_label.place(x=0, y=0)
 
         imageholder_canvas = customtkinter.CTkCanvas(master=obs_overlay_window, width=390, height=125, bg="green", highlightthickness=0)
@@ -1032,9 +1071,9 @@ def update_obs_overlay(driver):
         imageholder_canvas.create_image((0, 0), image=placeholder_4v4_imagetk, anchor="nw")
 
         positions = [65, 195, 325]
-        imageholder_canvas.create_text((65, 22), text=f"{tags[0]}", font=tagsfont, anchor="center", fill="white")
+        imageholder_canvas.create_text((65, 22), text=f"{tags[0]}", font=tagsfont, anchor="center", fill=color)
         imageholder_canvas.create_text((65, 67), text=f"{teamscores[0]}", font=scoresfont, anchor="center", fill="white")
-        imageholder_canvas.create_text((325, 22), text=f"{tags[1]}", font=tagsfont, anchor="center", fill="white")
+        imageholder_canvas.create_text((325, 22), text=f"{tags[1]}", font=tagsfont, anchor="center", fill=color)
         imageholder_canvas.create_text((325, 67), text=f"{teamscores[1]}", font=scoresfont, anchor="center", fill="white")
 
         score_diff = abs(teamscores[0] - teamscores[1])
@@ -1105,21 +1144,15 @@ if __name__ == "__main__":
     options.add_argument("--window-position=-2400,-2400")
     driver = webdriver.Chrome(options=options)
     driver.get("https://gb.hlorenzi.com/table")
-    try:
-        if hotkey:
-            keyboard.add_hotkey(hotkey, lambda: upload_screenshot(driver))
-        if twitchhotkey:
-            keyboard.add_hotkey(twitchhotkey, lambda: upload_screenshot_twitch(driver))
-    except ValueError:
-        reset_settings()
-        keyboard.add_hotkey(hotkey, lambda: upload_screenshot(driver))
-
+    
     WebDriverWait(driver, 20).until(lambda d: d.execute_script("return document.readyState") == "complete")
     print("loaded")
+    
 
     try:
         do_not_consent_button = driver.find_element(By.XPATH, "//button[@class='fc-button fc-cta-do-not-consent fc-secondary-button']")
         do_not_consent_button.click()
+        print("declined cookies")
     except NoSuchElementException:
         print("Do not consent button not found. Proceeding without it.")
 
@@ -1129,6 +1162,11 @@ if __name__ == "__main__":
     select = Select(select_element)
     select.select_by_visible_text("MK8DX")
     select_element.click()
+    print("set gamemode to MK8DX")
+
+    driver.refresh()
+    WebDriverWait(driver, 20).until(lambda d: d.execute_script("return document.readyState") == "complete")
+    print("refreshed")
     
 
     images = driver.find_elements(By.TAG_NAME, "img")
@@ -1143,17 +1181,21 @@ if __name__ == "__main__":
         tableimg.configure(dark_image=img)
         image_label.configure(image=tableimg)
         image_label.image = tableimg
+
+    print("checking for obs overlay")
     
     if obs_overlay_active:
         obs_overlay_active = not obs_overlay_active
         toggle_obs(driver)
         obs_overlay_checkbox.select()
-    
+
+    print("checking for obs virtual cam")
     if using_obs_virtual_cam:
         using_obs_virtual_cam = not using_obs_virtual_cam
         toggle_using_obs_virtual_cam()
         using_obs_virtual_cam_checkbox.select()
 
+    print("setting up ui")
     def on_closing():
         if hotkey != "Multi_key" and twitchhotkey !="Multi_key":
             save_settings()
@@ -1161,6 +1203,18 @@ if __name__ == "__main__":
         root.destroy()
         if using_obs_virtual_cam:
             cap.release() 
+    print("setting up hotkeys")
+    try:
+        if hotkey:
+            keyboard.add_hotkey(hotkey, lambda: upload_screenshot(driver))
+        if twitchhotkey:
+            keyboard.add_hotkey(twitchhotkey, lambda: upload_screenshot_twitch(driver))
+    except ValueError:
+        reset_settings()
+        keyboard.add_hotkey(hotkey, lambda: upload_screenshot(driver))
+    print("added hotkeys")
+
 
     root.protocol("WM_DELETE_WINDOW", on_closing)
+    print("starting UI")
     root.mainloop()
