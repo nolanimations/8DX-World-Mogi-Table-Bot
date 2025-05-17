@@ -2,9 +2,9 @@
 
 # Highlight Tag
 
-This fork adds the ability to submit your own Tag, and it will be highlighted in yellow on the OBS overlay. It will also be highlighted by asterisks in the clipboard output.
+This fork adds the ability to submit your own Tag, and it will be highlighted in magenta and surrounded by "*" signs on the OBS overlay. It will also be highlighted by asterisks in the clipboard output.
 
-![Highlight Tag](https://github.com/user-attachments/assets/cdca82c9-2297-4090-bf9b-77121acf066a)
+![Highlight](https://github.com/user-attachments/assets/acc78ef2-2740-4a24-b73b-6f8546b68721)
 
 This feature is not thoroughly tested, use at your own risk
 
