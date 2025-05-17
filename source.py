@@ -945,151 +945,102 @@ def update_obs_overlay(driver):
     for line in scoresvalue.split("\n"):
         match = pattern.match(line)
         if match:
-            name = match.group(1)
-            name = name.lstrip()
+            name = match.group(1).lstrip()
             score_str = match.group(2)
             score = sum(int(x) for x in score_str.split("+"))
 
             initial = name[0].upper()
             if initial == "8":
                 initial = "B"
-            if initial in scoresfr:
-                scoresfr[initial] += score
-            else:
-                scoresfr[initial] = score
+            scoresfr[initial] = scoresfr.get(initial, 0) + score
+
     sortedscores = sorted(scoresfr.items(), key=lambda x: x[1], reverse=True)
     total_score = sum(scoresfr.values())
-    if ((total_score % 82) == 0):
+    if total_score % 82 == 0:
         races_left = f"@{12 - int(total_score / 82)}"
         missingpoints = 0
     else:
         races_left = f"@{12 - (int(total_score / 82) + 1)}"
         missingpoints = 82 - (total_score % 82)
 
-
-    tags = [key for key, _ in sortedscores]
-    teamscores = [value for key, value in sortedscores]
+    tags = [k for k, _ in sortedscores]
+    teamscores = [v for _, v in sortedscores]
+    # trim to 2v2, 3v3, 4v4, or 6v6 layouts
     if len(tags) > 6:
-        tags = tags[:6]
-        teamscores = teamscores[:6]
+        tags, teamscores = tags[:6], teamscores[:6]
     elif len(tags) == 5:
-        tags = tags[:4]
-        teamscores = teamscores[:4]
+        tags, teamscores = tags[:4], teamscores[:4]
 
-    if len(tags) == 6: #2v2
-        clear_imagetk = customtkinter.CTkImage(dark_image=(Image.new("RGB", (780, 125), "#008000")))
-        clear_label = customtkinter.CTkLabel(master=obs_overlay_window, width=780, height=125, image=clear_imagetk, text="")
-        clear_label.place(x=0, y=0)
-        imageholder_canvas = customtkinter.CTkCanvas(master=obs_overlay_window, width=780, height=125, bg="green", highlightthickness = 0)
-        imageholder_canvas.place(x=0, y=0)
-        imageholder_canvas.create_image((0, 0), image=placeholder_2v2_imagetk, anchor="nw")
-        for i in range(6): 
+    # helper to draw tags + scores
+    def draw_block(canvas, positions, count):
+        for i in range(count):
             tag = tags[i]
-            color = "yellow" if tag == my_tag else "white"
-            x_position = (i * 130) + 65  
-            imageholder_canvas.create_text((x_position, 22), text=f"{tags[i]}", font=tagsfont, anchor="center", fill=color)
-            imageholder_canvas.create_text((x_position, 67), text=f"{teamscores[i]}", font=scoresfont, anchor="center", fill="white")
+            x, y_tag, y_score = positions[i]
+            if tag == my_tag:
+                display = f"*{tag}*"
+                color = "magenta"
+            else:
+                display = tag
+                color = "white"
+            canvas.create_text((x, y_tag), text=display, font=tagsfont,
+                               anchor="center", fill=color)
+            canvas.create_text((x, y_score), text=str(teamscores[i]),
+                               font=scoresfont, anchor="center", fill="white")
 
-        for i in range(5): 
-            x_position_1 = (i * 130) + 65 
-            x_position_2 = ((i + 1) * 130) + 65  
+    # clear & choose layout
+    if len(tags) == 6:  # 2v2
+        bg_img, width = placeholder_2v2_imagetk, 780
+        positions = [((i*130)+65, 22, 67) for i in range(6)]
+    elif len(tags) == 4:  # 3v3
+        bg_img, width = placeholder_3v3_imagetk, 520
+        positions = [((i*130)+65, 22, 67) for i in range(4)]
+    elif len(tags) == 3:  # 4v4
+        bg_img, width = placeholder_4v4_imagetk, 390
+        xs = [65, 195, 325]
+        positions = [(xs[i], 22, 67) for i in range(3)]
+    elif len(tags) == 2:  # 6v6 (treated as 2-team)
+        bg_img, width = placeholder_4v4_imagetk, 390
+        positions = [(65, 22, 67), (325, 22, 67)]
+    else:
+        return  # nothing to draw
 
-            score_diff = abs(teamscores[i] - teamscores[i + 1])
+    # redraw overlay
+    clear_img = customtkinter.CTkImage(
+        dark_image=Image.new("RGB", (780, 125), "#008000"))
+    clear_label = customtkinter.CTkLabel(
+        master=obs_overlay_window, width=780, height=125,
+        image=clear_img, text="")
+    clear_label.place(x=0, y=0)
 
-            diff_x_position = (x_position_1 + x_position_2) / 2  
-            diff_y_position =  90 + (35 // 2)
+    canvas = customtkinter.CTkCanvas(
+        master=obs_overlay_window, width=width, height=125,
+        bg="green", highlightthickness=0)
+    # center narrower layouts
+    x_off = (780 - width) // 2
+    canvas.place(x=x_off, y=0)
+    canvas.create_image((0, 0), image=bg_img, anchor="nw")
 
-            imageholder_canvas.create_text((diff_x_position, diff_y_position), text=f"+{score_diff}", font=smallerfont, anchor="center", fill="white")
-        imageholder_canvas.create_text((720,(90 + 35 // 2)), text=f"{races_left}", font=smallerfont, anchor="center", fill="medium purple")
-        if missingpoints != 0:
-            imageholder_canvas.create_text((40,(90 + 35 // 2)), text=f"-{missingpoints}", font=smallerfont, anchor="center", fill="red")
-    elif len(tags) == 4: #3v3
-        clear_imagetk = customtkinter.CTkImage(dark_image=(Image.new("RGB", (780, 125), "#008000")))
-        clear_label = customtkinter.CTkLabel(master=obs_overlay_window, width=780, height=125, image=clear_imagetk, text="")
-        clear_label.place(x=0, y=0)
+    draw_block(canvas, positions, len(positions))
 
-        imageholder_canvas = customtkinter.CTkCanvas(master=obs_overlay_window, width=520, height=125, bg="green", highlightthickness=0)
-        imageholder_canvas.place(x=((780 - 520) // 2), y=0)  
-        imageholder_canvas.create_image((0, 0), image=placeholder_3v3_imagetk, anchor="nw")
-        
-        for i in range(4):
-            tag = tags[i]
-            color = "yellow" if tag == my_tag else "white"
-            x_position = (i * 130) + 65  
-            imageholder_canvas.create_text((x_position, 22), text=f"{tags[i]}", font=tagsfont, anchor="center", fill=color)
-            imageholder_canvas.create_text((x_position, 67), text=f"{teamscores[i]}", font=scoresfont, anchor="center", fill="white")
-        
-        for i in range(3): 
-            x_position_1 = (i * 130) + 65 
-            x_position_2 = ((i + 1) * 130) + 65  
+    # draw diffs
+    for i in range(len(positions)-1):
+        x1, _, _ = positions[i]
+        x2, _, _ = positions[i+1]
+        diff = abs(teamscores[i] - teamscores[i+1])
+        canvas.create_text(((x1+x2)/2, 90 + 35//2),
+                           text=f"+{diff}", font=smallerfont,
+                           anchor="center", fill="white")
 
-            score_diff = abs(teamscores[i] - teamscores[i + 1])
+    # races left / missing
+    canvas.create_text((width - 60, 90 + 35//2),
+                    text=races_left, font=smallerfont,
+                    anchor="center", fill="medium purple")
 
-            diff_x_position = (x_position_1 + x_position_2) / 2  
-            diff_y_position =  90 + (35 // 2)
+    if missingpoints:
+        canvas.create_text((40, 90 + 35//2),
+                           text=f"-{missingpoints}",
+                           font=smallerfont, anchor="center", fill="red")
 
-            imageholder_canvas.create_text((diff_x_position, diff_y_position), text=f"+{score_diff}", font=smallerfont, anchor="center", fill="white")
-        
-        imageholder_canvas.create_text((460,(90 + 35 // 2)), text=f"{races_left}", font=smallerfont, anchor="center", fill="medium purple")
-        if missingpoints != 0:
-            imageholder_canvas.create_text((40,(90 + 35 // 2)), text=f"-{missingpoints}", font=smallerfont, anchor="center", fill="red")
-    elif len(tags) == 3: #4v4
-        clear_imagetk = customtkinter.CTkImage(dark_image=(Image.new("RGB", (780, 125), "#008000")))
-        clear_label = customtkinter.CTkLabel(master=obs_overlay_window, width=780, height=125, image=clear_imagetk, text="")
-        clear_label.place(x=0, y=0)
-        imageholder_canvas = customtkinter.CTkCanvas(master=obs_overlay_window, width=390, height=125, bg="green", highlightthickness=0)
-        imageholder_canvas.place(x=((780 - 390) // 2), y=0)
-        imageholder_canvas.create_image((0, 0), image=placeholder_4v4_imagetk, anchor="nw")
-
-
-        positions = [65, 195, 325]  
-
-        for i in range(3): 
-            tag = tags[i]
-            color = "yellow" if tag == my_tag else "white"
-            x_position = positions[i]
-            imageholder_canvas.create_text((x_position, 22), text=f"{tags[i]}", font=tagsfont, anchor="center", fill=color)
-            imageholder_canvas.create_text((x_position, 67), text=f"{teamscores[i]}", font=scoresfont, anchor="center", fill="white")
-
-        for i in range(2): 
-            x_position_1 = positions[i]
-            x_position_2 = positions[i + 1]
-            score_diff = abs(teamscores[i] - teamscores[i + 1])
-
-            diff_x_position = (x_position_1 + x_position_2) / 2
-            diff_y_position = 90 + (35 // 2)
-
-            imageholder_canvas.create_text((diff_x_position, diff_y_position), text=f"+{score_diff}", font=smallerfont, anchor="center", fill="white")
-
-        imageholder_canvas.create_text((360, (90 + 35 // 2)), text=f"{races_left}", font=smallerfont, anchor="center", fill="medium purple")
-
-        if missingpoints != 0:
-            imageholder_canvas.create_text((30, (90 + 35 // 2)), text=f"-{missingpoints}", font=smallerfont, anchor="center", fill="red")
-    elif len(tags) == 2: #6v6
-        clear_imagetk = customtkinter.CTkImage(dark_image=(Image.new("RGB", (780, 125), "#008000")))
-        clear_label = customtkinter.CTkLabel(master=obs_overlay_window, width=780, height=125, image=clear_imagetk, text="")
-        clear_label.place(x=0, y=0)
-
-        imageholder_canvas = customtkinter.CTkCanvas(master=obs_overlay_window, width=390, height=125, bg="green", highlightthickness=0)
-        imageholder_canvas.place(x=((780 - 390) // 2), y=0)
-        imageholder_canvas.create_image((0, 0), image=placeholder_4v4_imagetk, anchor="nw")
-
-        positions = [65, 195, 325]
-        imageholder_canvas.create_text((65, 22), text=f"{tags[0]}", font=tagsfont, anchor="center", fill=color)
-        imageholder_canvas.create_text((65, 67), text=f"{teamscores[0]}", font=scoresfont, anchor="center", fill="white")
-        imageholder_canvas.create_text((325, 22), text=f"{tags[1]}", font=tagsfont, anchor="center", fill=color)
-        imageholder_canvas.create_text((325, 67), text=f"{teamscores[1]}", font=scoresfont, anchor="center", fill="white")
-
-        score_diff = abs(teamscores[0] - teamscores[1])
-
-
-        imageholder_canvas.create_text((195, 22), text=f"+{score_diff}", font=smallerfont, anchor="center", fill="white")
-        imageholder_canvas.create_text((195, 67), text="-", font=smallerfont, anchor="center", fill="white")
-
-        imageholder_canvas.create_text((340, (90 + 35 // 2)), text=f"{races_left}", font=smallerfont, anchor="center", fill="medium purple")
-
-        if missingpoints != 0:
-            imageholder_canvas.create_text((50, (90 + 35 // 2)), text=f"-{missingpoints}", font=smallerfont, anchor="center", fill="red")
 
 def resetoverlay(driver):
     scores = driver.find_element(By.TAG_NAME, "textarea")
