@@ -311,7 +311,7 @@ smallerfont = customtkinter.CTkFont(family="DS-Digital",      size=30, weight="b
 
 infotext = customtkinter.CTkTextbox(tabview.tab("Info"), width=620, height=250)
 infotext.grid(row=0, column=0, padx=(20, 0), pady=(20, 0), sticky="nsew")
-infotext.insert("0.0", "Press Hotkey once you're on the sorted race results screen or the points finished adding up\nOnly enter the first Letter of Tag for DC Points (in this format: A10 B10 C10 D10 E10 F10)\nUse the normal Hotkey if youre using OBS method or watching Fullscreen (recommended)\nUse the Twitch Hotkey if youre watching twitch with chat opened (highly experimental)\nTwitch Mode might not work if youre not on Chrome and dont have something in your bookmarks \n(might not even work then)\n\nMade by tarek\nusing https://gb.hlorenzi.com/table\n\nDiscord: 9tarek\nin case of questions\nv2.1")
+infotext.insert("0.0", "Press Hotkey once you're on the sorted race results screen or the points finished adding up\nOnly enter the first Letter of Tag for DC Points (in this format: A10 B10 C10 D10 E10 F10)\nUse the normal Hotkey if youre using OBS method or watching Fullscreen (recommended)\nUse the Twitch Hotkey if youre watching twitch with chat opened (highly experimental)\nTwitch Mode might not work if youre not on Chrome and dont have something in your bookmarks \n(might not even work then)\n\nMade by tarek, fork by Nolanimations\nusing https://gb.hlorenzi.com/table and https://gb2.hlorenzi.com/table\n\nv0.3")
 infotext.configure(state="disabled")
 
 # Add game mode switcher
