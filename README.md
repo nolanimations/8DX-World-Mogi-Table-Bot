@@ -1,8 +1,25 @@
 # Mogi Table Bot
 
+## Mario Kart World (MKWorld) Support
+
+This fork of the Mogi Table Bot introduces experimental support for generating tables from *Mario Kart World* screenshots.
+
+To use this feature, you **must** select `MKWorld` mode in the **Settings** tab.
+
+<p align="center">
+  <img width="285" height="117" alt="MKWorld Setting" src="https://github.com/user-attachments/assets/b031a79a-dbfe-43ec-a3ed-0f50230f6577" />
+</p> 
+
+### Important Notes & Limitations for MKWorld Mode:
+
+*   **12-Player Rooms Only:** Support is currently limited to standard 12-player rooms.
+*   **Team Mode is NOT Supported:** Due to the different colouring on the team scoreboard which interferes with OCR, team mode is not supported. This is also generally unnecessary as the game already provides final team scores.
+*   **Table Generation is Slow:** Be patient! It can take 15-20 seconds or more for the website to fully process the screenshot and generate the final table.
+*   **OCR Isn't Perfect:** The technology for reading MKW screenshots is still new. **Always double-check the generated scores for mistakes.** The bot relies entirely on the accuracy of Lorenzi's OCR.
+
 # Highlight Tag
 
-This fork adds the ability to submit your own Tag, and it will be highlighted in magenta and surrounded by "*" signs on the OBS overlay. It will also be highlighted by asterisks in the clipboard output.
+This fork also adds the ability to submit your own Tag, and it will be highlighted in magenta and surrounded by "*" signs on the OBS overlay. It will also be highlighted by asterisks in the clipboard output.
 
 ![Highlight](https://github.com/user-attachments/assets/acc78ef2-2740-4a24-b73b-6f8546b68721)
 
