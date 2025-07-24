@@ -17,6 +17,8 @@ To use this feature, you **must** select `MKWorld` mode in the **Settings** tab.
 *   **Table Generation is Slow:** Be patient! It can take 15-20 seconds or more for the website to fully process the screenshot and generate the final table.
 *   **OCR Isn't Perfect:** The technology for reading MKW screenshots is still new. **Always double-check the generated scores for mistakes.** The bot relies entirely on the accuracy of Lorenzi's OCR.
 
+If you encounter any issues or have suggestions regarding the MKWorld implementation, contact me on Discord: @nolanimations
+
 # Highlight Tag
 
 This fork also adds the ability to submit your own Tag, and it will be highlighted in magenta and surrounded by "*" signs on the OBS overlay. It will also be highlighted by asterisks in the clipboard output.
