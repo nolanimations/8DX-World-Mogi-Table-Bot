@@ -184,8 +184,8 @@ def extract_theme():
             theme_file.write(theme)
     return theme_path
     
-
-
+# Added game_mode global variable
+game_mode = "MK8DX"
 hotkey = "Down"
 twitchhotkey = None
 autocopy = "Disabled"
@@ -200,7 +200,8 @@ def get_config_path():
     return os.path.join(home_dir, config_file)
 
 def load_settings():
-    global hotkey, twitchhotkey, autocopy, using_obs_virtual_cam, obs_overlay_active
+    # Added game_mode to global variables
+    global hotkey, twitchhotkey, autocopy, using_obs_virtual_cam, obs_overlay_active, game_mode
     config_path = get_config_path()
     try:
         if os.path.exists(config_path):
@@ -211,6 +212,8 @@ def load_settings():
                 autocopy = settings.get("autocopy", autocopy)
                 using_obs_virtual_cam = settings.get("using_obs_virtual_cam", using_obs_virtual_cam)
                 obs_overlay_active = settings.get("obs_overlay_active", obs_overlay_active)
+                # Load game_mode from config
+                game_mode = settings.get("game_mode", game_mode)
                 global my_tag
                 my_tag = settings.get("my_tag", my_tag)
         else:
@@ -228,20 +231,25 @@ def save_settings():
         "autocopy": autocopy,
         "using_obs_virtual_cam": using_obs_virtual_cam,
         "obs_overlay_active": obs_overlay_active,
+        # Save game_mode to config
+        "game_mode": game_mode,
         "my_tag": my_tag
     }
     with open(config_path, "w") as file:
         json.dump(settings, file)
 
 def reset_settings():
-    global hotkey, twitchhotkey, autocopy, using_obs_virtual_cam, obs_overlay_active
+    # Added game_mode to global variables
+    global hotkey, twitchhotkey, autocopy, using_obs_virtual_cam, obs_overlay_active, game_mode
     config_path = get_config_path()
     settings = {
         "hotkey": "Down",
         "twitchhotkey": None,
         "autocopy": "Disabled",
         "using_obs_virtual_cam": False,
-        "obs_overlay_active": False
+        "obs_overlay_active": False,
+        # Reset game_mode to default
+        "game_mode": "MK8DX"
     }
     with open(config_path, "w") as file:
         json.dump(settings, file)
@@ -251,6 +259,8 @@ def reset_settings():
     autocopy = "Disabled"
     using_obs_virtual_cam = False
     obs_overlay_active = False
+    # Reset game_mode to default
+    game_mode = "MK8DX"
     
 
 
@@ -304,18 +314,29 @@ infotext.grid(row=0, column=0, padx=(20, 0), pady=(20, 0), sticky="nsew")
 infotext.insert("0.0", "Press Hotkey once you're on the sorted race results screen or the points finished adding up\nOnly enter the first Letter of Tag for DC Points (in this format: A10 B10 C10 D10 E10 F10)\nUse the normal Hotkey if youre using OBS method or watching Fullscreen (recommended)\nUse the Twitch Hotkey if youre watching twitch with chat opened (highly experimental)\nTwitch Mode might not work if youre not on Chrome and dont have something in your bookmarks \n(might not even work then)\n\nMade by tarek\nusing https://gb.hlorenzi.com/table\n\nDiscord: 9tarek\nin case of questions\nv2.1")
 infotext.configure(state="disabled")
 
+# Add game mode switcher
+def switch_game_mode(value):
+    global game_mode
+    game_mode = value
+    reinitialize_driver()
 
+game_mode_label = customtkinter.CTkLabel(tabview.tab("Settings"), text="Game Mode", anchor="center")
+game_mode_label.grid(row=0, column=1, padx=0, pady=(5, 0))
+
+game_mode_switcher = customtkinter.CTkSegmentedButton(tabview.tab("Settings"), values=["MK8DX", "MKWorld"], command=switch_game_mode)
+game_mode_switcher.set(game_mode)
+game_mode_switcher.grid(row=1, column=1, pady=(0, 10))
 
 
 auto_copy_label = customtkinter.CTkLabel(tabview.tab("Settings"), text="Auto Copy to Clipboard", anchor="center")
-auto_copy_label.grid(row=0, column=1, padx=0, pady=(5, 0))
+auto_copy_label.grid(row=2, column=1, padx=0, pady=(5, 0))
 
 def auto_copy_menu_callback(choice):
     global autocopy
     autocopy = choice
 
 auto_copy_menu = customtkinter.CTkOptionMenu(tabview.tab("Settings"), values=["Disabled", "Table", "Scores"], command=auto_copy_menu_callback, anchor="center")
-auto_copy_menu.grid(row=1, column=1, pady=(0, 0))
+auto_copy_menu.grid(row=3, column=1, pady=(0, 0))
 auto_copy_menu.set(autocopy)
 
 # Add own Tag
@@ -324,13 +345,13 @@ my_tag_label = customtkinter.CTkLabel(
     text="My Tag (single letter)",
     anchor="center"
 )
-my_tag_label.grid(row=2, column=1, pady=(10, 0))
+my_tag_label.grid(row=4, column=1, pady=(10, 0))
 
 my_tag_field = customtkinter.CTkEntry(
     tabview.tab("Settings"),
     placeholder_text="e.g. A"
 )
-my_tag_field.grid(row=3, column=1, pady=(0, 0))
+my_tag_field.grid(row=5, column=1, pady=(0, 0))
 if my_tag:
     my_tag_field.insert(0, my_tag)
 
@@ -346,7 +367,7 @@ my_tag_button = customtkinter.CTkButton(
     text="Submit Tag",
     command=set_my_tag
 )
-my_tag_button.grid(row=4, column=1, pady=(10, 0))
+my_tag_button.grid(row=6, column=1, pady=(10, 0))
 
 
 def set_dc_points(driver):
@@ -431,15 +452,15 @@ def fill_in_tags(driver):
 
 
 dc_points_label = customtkinter.CTkLabel(tabview.tab("Settings"), text="DC Points")
-dc_points_label.grid(row=5, column=1, pady=(10, 0))
+dc_points_label.grid(row=7, column=1, pady=(10, 0))
 
 dc_points_field = customtkinter.CTkEntry(tabview.tab("Settings"), placeholder_text="e.g. A6 B10 C2")
-dc_points_field.grid(row=6, column=1, pady=(0, 0))
+dc_points_field.grid(row=8, column=1, pady=(0, 0))
 
 
 
 button_frame_settings = customtkinter.CTkFrame(tabview.tab("Settings"))
-button_frame_settings.grid(row=7, column=1, pady=(10, 0))
+button_frame_settings.grid(row=9, column=1, pady=(10, 0))
 
 fill_in_tags_button = customtkinter.CTkButton(button_frame_settings, text="Insert Tags", command=lambda: fill_in_tags(driver))
 fill_in_tags_button.grid(row=4, column=1, pady=(10, 0))
@@ -502,9 +523,9 @@ def set_twitch_hotkey(event):
 
     
 hotkeys_label = customtkinter.CTkLabel(tabview.tab("Settings"), text="Hotkeys")
-hotkeys_label.grid(row=8, column=1, pady=(10, 0))    
+hotkeys_label.grid(row=10, column=1, pady=(10, 0))    
 button_frame_hotkeys = customtkinter.CTkFrame(tabview.tab("Settings"))
-button_frame_hotkeys.grid(row=9, column=1, pady=(0, 0))    
+button_frame_hotkeys.grid(row=11, column=1, pady=(0, 0))    
 
 change_hotkey_button = customtkinter.CTkButton(button_frame_hotkeys, text="Change Hotkey", command=change_hotkey)
 change_hotkey_button.grid(row=0, column=0, padx=(5, 5))
@@ -659,12 +680,16 @@ def add_dc_points(driver):
                     line = re.sub(r'\+\d+$', '', line)
                 new_html.append(line)         
 
-    new_html = new_html[::-1]
     new_html = "\n".join(new_html)
     scores.clear()  
     scores.send_keys(new_html)
-    images = driver.find_elements(By.TAG_NAME, "img")
-    image_element = images[7]
+    if game_mode == "MKWorld":
+        # Find the image by its unique base64 src attribute
+        image_element = driver.find_element(By.XPATH, "//img[starts-with(@src, 'data:image/png;base64,')]")
+    else:
+        images = driver.find_elements(By.TAG_NAME, "img")
+        image_element = images[7]
+    
     while True:
         if image_element.get_attribute("style").split(";")[3].split(":")[1] == " 1":
             break
@@ -688,17 +713,57 @@ def upload_screenshot(driver):
         temp_screenshot_path = capture_image_from_obs_virtual_camera()
 
     try:
+        if game_mode == "MKWorld":
+            # Ensure the "From screenshot" panel is open
+            try:
+                driver.find_element(By.CSS_SELECTOR, "input[type='file']")
+            except NoSuchElementException:
+                # If the input isn't found, the panel is likely closed. Click the button to open it.
+                from_screenshot_button = WebDriverWait(driver, 10).until(
+                    lambda d: d.find_element(By.XPATH, "//button[contains(., 'From screenshot')]")
+                )
+                from_screenshot_button.click()
+        
         upload_element = driver.find_element(By.CSS_SELECTOR, "input[type='file']")
         upload_element.send_keys(temp_screenshot_path)
 
         pywinstyles.set_opacity(image_label, value=0.2)
 
-        images = driver.find_elements(By.TAG_NAME, "img")
-        image_element = images[7]
-        time.sleep(0.5)
-        while True:
-            if image_element.get_attribute("style").split(";")[3].split(":")[1] == " 1":
-                break
+        # Wait for the textarea to appear first
+        scores = WebDriverWait(driver, 20).until(
+            lambda d: d.find_element(By.TAG_NAME, "textarea")
+        )
+
+        if game_mode == "MKWorld":
+            # This loop waits for the OCR to finish by requiring the player count to be stable for several checks.
+            last_line_count = -1
+            stability_counter = 0
+            required_stable_checks = 2  # Require 2 stable checks (e.g., 2 * 1.5s = 3s of stability)
+
+            while True:
+                current_text = scores.get_attribute("value")
+                current_line_count = len([line for line in current_text.split('\n') if line.strip() != ''])
+
+                if current_line_count == last_line_count and current_line_count > 0:
+                    stability_counter += 1
+                    print(f"Stability counter: {stability_counter}/{required_stable_checks}")
+                else:
+                    # The line count changed, so reset the stability counter.
+                    stability_counter = 0
+                    last_line_count = current_line_count
+
+                if stability_counter >= required_stable_checks:
+                    print(f"Table finished generating with {current_line_count} players.")
+                    break
+                
+                time.sleep(1.5) # Check for an update every 1.5 seconds.
+            
+            # Now that the text is stable, find the final image
+            image_element = driver.find_element(By.XPATH, "//img[starts-with(@src, 'data:image/png;base64,')]")
+        else:
+            # Original logic for MK8DX
+            images = driver.find_elements(By.TAG_NAME, "img")
+            image_element = images[7]
         scores = driver.find_element(By.TAG_NAME, "textarea")
         scoresvalue = scores.get_attribute("value")
         if "¹■" in scoresvalue or "¹ı■" in scoresvalue or "¹/" in scoresvalue:
@@ -715,11 +780,9 @@ def upload_screenshot(driver):
             if dc_points != "":
                 add_dc_points(driver)
             else: 
-                scores.send_keys(" ")
-                while True:
-                    if image_element.get_attribute("style").split(";")[3].split(":")[1] == " 1":
-                        break
-                
+                if game_mode == "MK8DX":
+                    scores.send_keys(" ")
+                    
             image_url = image_element.get_attribute("src")
 
             if image_url.startswith("data:image/png;base64,"):
@@ -781,13 +844,41 @@ def upload_screenshot_twitch(driver):
         upload_element = driver.find_element(By.CSS_SELECTOR, "input[type='file']")
         upload_element.send_keys(temp_screenshot_path)
         pywinstyles.set_opacity(image_label, value=0.2)
-        images = driver.find_elements(By.TAG_NAME, "img")
-        image_element = images[7]
-        time.sleep(0.5)
-        while True:
-            if image_element.get_attribute("style").split(";")[3].split(":")[1] == " 1":
-                break
-        scores = driver.find_element(By.TAG_NAME, "textarea")
+        # Wait for the textarea to appear first
+        scores = WebDriverWait(driver, 20).until(
+            lambda d: d.find_element(By.TAG_NAME, "textarea")
+        )
+
+        if game_mode == "MKWorld":
+            # This loop waits for the OCR to finish by requiring the player count to be stable for several checks.
+            last_line_count = -1
+            stability_counter = 0
+            required_stable_checks = 2  # Require 2 stable checks (e.g., 2 * 1.5s = 3s of stability)
+
+            while True:
+                current_text = scores.get_attribute("value")
+                current_line_count = len([line for line in current_text.split('\n') if line.strip() != ''])
+
+                if current_line_count == last_line_count and current_line_count > 0:
+                    stability_counter += 1
+                    print(f"Stability counter: {stability_counter}/{required_stable_checks}")
+                else:
+                    # The line count changed, so reset the stability counter.
+                    stability_counter = 0
+                    last_line_count = current_line_count
+
+                if stability_counter >= required_stable_checks:
+                    print(f"Table finished generating with {current_line_count} players.")
+                    break
+                
+                time.sleep(1.5) # Check for an update every 1.5 seconds.
+            
+            # Now that the text is stable, find the final image
+            image_element = driver.find_element(By.XPATH, "//img[starts-with(@src, 'data:image/png;base64,')]")
+        else:
+            # Original logic for MK8DX
+            images = driver.find_elements(By.TAG_NAME, "img")
+            image_element = images[7]
         scoresvalue = scores.get_attribute("value")
         if "¹■" in scoresvalue or "¹ı■" in scoresvalue:
             scoresvalue = scoresvalue.replace("¹■", "VA")
@@ -797,10 +888,8 @@ def upload_screenshot_twitch(driver):
         if dc_points != "":
             add_dc_points(driver)
         else: 
-            scores.send_keys(" ")
-            while True:
-                if image_element.get_attribute("style").split(";")[3].split(":")[1] == " 1":
-                    break
+            if game_mode == "MK8DX":
+                scores.send_keys(" ")
         
         image_url = image_element.get_attribute("src")
 
@@ -875,7 +964,7 @@ def toggle_obs(driver):
         close_obs()
 
 obs_overlay_checkbox = customtkinter.CTkCheckBox(tabview.tab("Settings"), command=lambda: toggle_obs(driver), text="OBS Overlay")
-obs_overlay_checkbox.grid(row=11, column=1, pady=(15, 0))
+obs_overlay_checkbox.grid(row=13, column=1, pady=(15, 0))
 
 def capture_image_from_obs_virtual_camera():
     for _ in range(3):
@@ -922,7 +1011,7 @@ def toggle_using_obs_virtual_cam():
         using_obs_virtual_cam = False
 
 using_obs_virtual_cam_checkbox = customtkinter.CTkCheckBox(tabview.tab("Settings"), command=toggle_using_obs_virtual_cam, text="Using OBS Virtual Camera")
-using_obs_virtual_cam_checkbox.grid(row=12, column=1, pady=(15, 0))
+using_obs_virtual_cam_checkbox.grid(row=14, column=1, pady=(15, 0))
 
 
 
@@ -932,7 +1021,7 @@ placeholder_2v2_imagetk = ImageTk.PhotoImage(Image.open(BytesIO(base64.b64decode
 placeholder_3v3_data = b"""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"""
 placeholder_3v3_imagetk = ImageTk.PhotoImage(Image.open(BytesIO(base64.b64decode(placeholder_3v3_data))))
 
-placeholder_4v4_data = b"""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"""
+placeholder_4v4_data = b"""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"""
 placeholder_4v4_imagetk = ImageTk.PhotoImage(Image.open(BytesIO(base64.b64decode(placeholder_4v4_data))))
 
 
@@ -1047,12 +1136,13 @@ def resetoverlay(driver):
     scores.clear()
     scores.send_keys(" ")
 
-    images = driver.find_elements(By.TAG_NAME, "img")
-    image_element = images[7]
+    if game_mode == "MKWorld":
+        # Find the image by its unique base64 src attribute
+        image_element = driver.find_element(By.XPATH, "//img[starts-with(@src, 'data:image/png;base64,')]")
+    else:
+        images = driver.find_elements(By.TAG_NAME, "img")
+        image_element = images[7]
     time.sleep(0.1)
-    while True:
-        if image_element.get_attribute("style").split(";")[3].split(":")[1] == " 1":
-            break
     image_url = image_element.get_attribute("src") 
     if image_url.startswith("data:image/png;base64,"):
         base64_data = image_url.split(",")[1]
@@ -1086,57 +1176,81 @@ def resetoverlay(driver):
         check_for_dc_points(driver)
 
 reset_button = customtkinter.CTkButton(tabview.tab("Settings"), command=lambda: resetoverlay(driver), text="Reset Scores") 
-reset_button.grid(row=10, column=1, pady=(10,0))
+reset_button.grid(row=12, column=1, pady=(10,0))
         
-
-
-if __name__ == "__main__":
-
+# Moved driver initialization to a separate function
+def reinitialize_driver():
+    global driver
+    if 'driver' in globals() and driver:
+        driver.quit()
+    
     options = webdriver.ChromeOptions()
     options.add_argument("--no-sandbox")
     options.add_argument("--disable-dev-shm-usage")
     options.add_argument("--headless")
     options.add_argument("--window-position=-2400,-2400")
     driver = webdriver.Chrome(options=options)
-    driver.get("https://gb.hlorenzi.com/table")
+    
+    if game_mode == "MKWorld":
+        driver.get("https://gb2.hlorenzi.com/table")
+    else:
+        driver.get("https://gb.hlorenzi.com/table")
     
     WebDriverWait(driver, 20).until(lambda d: d.execute_script("return document.readyState") == "complete")
     print("loaded")
     
-
     try:
-        do_not_consent_button = driver.find_element(By.XPATH, "//button[@class='fc-button fc-cta-do-not-consent fc-secondary-button']")
+        do_not_consent_button = driver.find_element(By.XPATH, "//button[contains(@class, 'fc-cta-do-not-consent')]")
         do_not_consent_button.click()
         print("declined cookies")
     except NoSuchElementException:
         print("Do not consent button not found. Proceeding without it.")
 
-    select_element = driver.find_element(By.ID, "selectTableGame")
-    select_element.click()
+    # --- Start of Final Fix ---
+    if game_mode == "MKWorld":
+        # On the MKWorld site, we must click "From screenshot" first
+        from_screenshot_button = WebDriverWait(driver, 10).until(
+            lambda d: d.find_element(By.XPATH, "//button[contains(., 'From screenshot')]")
+        )
+        from_screenshot_button.click()
+        print("Clicked 'From screenshot' button")
 
-    select = Select(select_element)
-    select.select_by_visible_text("MK8DX")
-    select_element.click()
-    print("set gamemode to MK8DX")
+        # Now, find the dropdown that appears and select MKWorld
+        # We use a more robust XPath here to find the select menu next to the "Game" label
+        game_select_element = WebDriverWait(driver, 10).until(
+            lambda d: d.find_element(By.XPATH, "//label[contains(text(), 'Game')]/following-sibling::select")
+        )
+        select = Select(game_select_element)
+        select.select_by_visible_text("MKWorld")
+        print(f"set gamemode to {game_mode}")
 
-    driver.refresh()
-    WebDriverWait(driver, 20).until(lambda d: d.execute_script("return document.readyState") == "complete")
-    print("refreshed")
+    else: # This is the original logic for MK8DX
+        select_element = driver.find_element(By.ID, "selectTableGame")
+        select = Select(select_element)
+        select.select_by_visible_text("MK8DX")
+        print(f"set gamemode to {game_mode}")
+
+        driver.refresh()
+        WebDriverWait(driver, 20).until(lambda d: d.execute_script("return document.readyState") == "complete")
+        print("refreshed")
+        
+        images = driver.find_elements(By.TAG_NAME, "img")
+        image_element = images[7]
+        image_url = image_element.get_attribute("src")
+        if image_url.startswith("data:image/png;base64,"):
+            base64_data = image_url.split(",")[1]
+            image_data = base64.b64decode(base64_data)
+            img = Image.open(BytesIO(image_data))
+            max_size = (600, 363)
+            img.thumbnail(max_size) 
+            tableimg.configure(dark_image=img)
+            image_label.configure(image=tableimg)
+            image_label.image = tableimg
+
+if __name__ == "__main__":
+    # Initial driver setup
+    reinitialize_driver()
     
-
-    images = driver.find_elements(By.TAG_NAME, "img")
-    image_element = images[7]
-    image_url = image_element.get_attribute("src")
-    if image_url.startswith("data:image/png;base64,"):
-        base64_data = image_url.split(",")[1]
-        image_data = base64.b64decode(base64_data)
-        img = Image.open(BytesIO(image_data))
-        max_size = (600, 363)
-        img.thumbnail(max_size) 
-        tableimg.configure(dark_image=img)
-        image_label.configure(image=tableimg)
-        image_label.image = tableimg
-
     print("checking for obs overlay")
     
     if obs_overlay_active:
