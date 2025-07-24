@@ -2,7 +2,7 @@
 
 ## Mario Kart World (MKWorld) Support
 
-This version of the Mogi Table Bot introduces experimental support for generating tables from *Mario Kart World* screenshots.
+This fork of the Mogi Table Bot introduces experimental support for generating tables from *Mario Kart World* screenshots.
 
 To use this feature, you **must** select `MKWorld` mode in the **Settings** tab.
 
@@ -19,7 +19,7 @@ To use this feature, you **must** select `MKWorld` mode in the **Settings** tab.
 
 # Highlight Tag
 
-This fork adds the ability to submit your own Tag, and it will be highlighted in magenta and surrounded by "*" signs on the OBS overlay. It will also be highlighted by asterisks in the clipboard output.
+This fork also adds the ability to submit your own Tag, and it will be highlighted in magenta and surrounded by "*" signs on the OBS overlay. It will also be highlighted by asterisks in the clipboard output.
 
 ![Highlight](https://github.com/user-attachments/assets/acc78ef2-2740-4a24-b73b-6f8546b68721)
 
