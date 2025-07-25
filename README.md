@@ -16,7 +16,7 @@ To use this feature, you **must** select `MKWorld` mode in the **Settings** tab.
 *   **Team Mode is NOT Supported:** Due to the different colouring on the team scoreboard which interferes with OCR, team mode is not supported. This is also generally unnecessary as the game already provides final team scores.
 *   **Table Generation is Slow:** Be patient! It can take 15-20 seconds or more for the website to fully process the screenshot and generate the final table.
 *   **OCR Isn't Perfect:** The technology for reading MKW screenshots is still new. **Always double-check the generated scores for mistakes.** The bot relies entirely on the accuracy of Lorenzi's OCR.
-*   **DC Points are very buggy:** I reccomend not using the DC Points feature. The table doesn't update correctly, only the OBS overlay and clipboard output (usually) do.
+*   **DC Points are very buggy:** I do not recommend using the DC Points feature. The table doesn't update correctly, only the OBS overlay and clipboard output (usually) do.
 
 If you encounter any issues or have suggestions regarding the MKWorld implementation, contact me on Discord: @nolanimations
 
