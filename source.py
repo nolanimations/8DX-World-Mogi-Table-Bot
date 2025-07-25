@@ -187,7 +187,6 @@ def extract_theme():
 # Added game_mode global variable
 game_mode = "MK8DX"
 hotkey = "Down"
-twitchhotkey = None
 autocopy = "Disabled"
 using_obs_virtual_cam = False
 obs_overlay_active = False
@@ -201,14 +200,13 @@ def get_config_path():
 
 def load_settings():
     # Added game_mode to global variables
-    global hotkey, twitchhotkey, autocopy, using_obs_virtual_cam, obs_overlay_active, game_mode
+    global hotkey, autocopy, using_obs_virtual_cam, obs_overlay_active, game_mode
     config_path = get_config_path()
     try:
         if os.path.exists(config_path):
             with open(config_path, "r") as file:
                 settings = json.load(file)
                 hotkey = settings.get("hotkey", hotkey)
-                twitchhotkey = settings.get("twitchhotkey", twitchhotkey)
                 autocopy = settings.get("autocopy", autocopy)
                 using_obs_virtual_cam = settings.get("using_obs_virtual_cam", using_obs_virtual_cam)
                 obs_overlay_active = settings.get("obs_overlay_active", obs_overlay_active)
@@ -227,7 +225,6 @@ def save_settings():
     config_path = get_config_path()
     settings = {
         "hotkey": hotkey,
-        "twitchhotkey": twitchhotkey,
         "autocopy": autocopy,
         "using_obs_virtual_cam": using_obs_virtual_cam,
         "obs_overlay_active": obs_overlay_active,
@@ -240,11 +237,10 @@ def save_settings():
 
 def reset_settings():
     # Added game_mode to global variables
-    global hotkey, twitchhotkey, autocopy, using_obs_virtual_cam, obs_overlay_active, game_mode
+    global hotkey, autocopy, using_obs_virtual_cam, obs_overlay_active, game_mode
     config_path = get_config_path()
     settings = {
         "hotkey": "Down",
-        "twitchhotkey": None,
         "autocopy": "Disabled",
         "using_obs_virtual_cam": False,
         "obs_overlay_active": False,
@@ -255,7 +251,6 @@ def reset_settings():
         json.dump(settings, file)
     
     hotkey = "Down"
-    twitchhotkey = None
     autocopy = "Disabled"
     using_obs_virtual_cam = False
     obs_overlay_active = False
@@ -369,44 +364,93 @@ my_tag_button = customtkinter.CTkButton(
 )
 my_tag_button.grid(row=6, column=1, pady=(10, 0))
 
-
 def set_dc_points(driver):
     global dc_points
     global currentimg
     global tableimg
     dc_points = dc_points_field.get()
+    
     if currentimg != 0:
         pywinstyles.set_opacity(image_label, value=0.2)
-        add_dc_points(driver)
-        images = driver.find_elements(By.TAG_NAME, "img")
-        image_element = images[7]
-        image_url = image_element.get_attribute("src")
+        
+        # 1. Get the current scores and calculate the new ones.
+        scores_area = driver.find_element(By.TAG_NAME, "textarea")
+        current_scores_text = scores_area.get_attribute("value")
+        final_scores_text = calculate_dc_points(current_scores_text)
+        
+        # --- FIX #1: This prevents the "not interactable" crash. ---
+        if game_mode == "MKWorld":
+            driver.execute_script("arguments[0].readOnly=false;", scores_area)
+        
+        # 2. Submit the new scores to the website.
+        scores_area.clear()
+        scores_area.send_keys(final_scores_text)
+        
+        # 3. Wait intelligently for the table to update.
+        if game_mode == "MKWorld":
+            try:
+                initial_src = driver.find_element(By.XPATH, "//img[starts-with(@src, 'data:image/png;base64,')]").get_attribute("src")
+            except NoSuchElementException:
+                initial_src = ""
+            last_src = initial_src
+            stability_counter = 0
+            required_stable_checks = 2
+            loop_failsafe = 0
+            while True:
+                image_element = WebDriverWait(driver, 5).until(lambda d: d.find_element(By.XPATH, "//img[starts-with(@src, 'data:image/png;base64,')]"))
+                current_src = image_element.get_attribute("src")
+                if current_src == last_src and current_src != "" and current_src != initial_src:
+                    stability_counter += 1
+                else:
+                    stability_counter = 0
+                    last_src = current_src
 
+                loop_failsafe += 1
+                if stability_counter >= required_stable_checks or loop_failsafe > 10:
+                    if loop_failsafe > 10:
+                        print("Stability check timed out, continuing anyway.")
+                    else:
+                        print("DC points applied and table image has stabilized.")
+                    break
+                time.sleep(1.5)
+        else: # MK8DX style wait
+            time.sleep(1.0)
+
+        # 4. Now that everything is stable, update the UI.
+        if obs_overlay_active:
+            update_obs_overlay(final_scores_text)
+        check_for_dc_points(final_scores_text)
+        if autocopy == "Scores":
+            copy_scores_to_clipboard(final_scores_text)
+
+        # 5. Get the final, stable image element and display it.
+        if game_mode == "MKWorld":
+            image_element = driver.find_element(By.XPATH, "//img[starts-with(@src, 'data:image/png;base64,')]")
+        else:
+            images = driver.find_elements(By.TAG_NAME, "img")
+            image_element = images[7]
+            
+        image_url = image_element.get_attribute("src")
         if image_url.startswith("data:image/png;base64,"):
             base64_data = image_url.split(",")[1]
             image_data = base64.b64decode(base64_data)
             img = Image.open(BytesIO(image_data))
             currentimg = img
-
             max_size = (600, 363)
             img.thumbnail(max_size)
-
             tableimg.configure(dark_image=img)
             image_label.configure(image=tableimg)
             image_label.image = tableimg
             pywinstyles.set_opacity(image_label, value=1)
-        
-        if autocopy == "Table":
-            send_to_clipboard()
-        elif autocopy == "Scores":
-            copy_scores_to_clipboard(driver)
-        check_for_dc_points(driver)
-        if obs_overlay_active:
-            update_obs_overlay(driver)
+            if autocopy == "Table":
+                send_to_clipboard()
 
-def clear_dc_points(driver):
+def clear_all_scores(driver):
+    global dc_points
+    print("Clearing DC points and resetting table...")
     dc_points_field.delete(0, "end")
-    set_dc_points(driver)
+    dc_points = ""
+    resetoverlay(driver)
 
 def roomcrash(driver):
     scores = driver.find_element(By.TAG_NAME, "textarea")
@@ -465,7 +509,7 @@ button_frame_settings.grid(row=9, column=1, pady=(10, 0))
 fill_in_tags_button = customtkinter.CTkButton(button_frame_settings, text="Insert Tags", command=lambda: fill_in_tags(driver))
 fill_in_tags_button.grid(row=4, column=1, pady=(10, 0))
 
-dc_points_clear = customtkinter.CTkButton(button_frame_settings, text="Clear", command=lambda: clear_dc_points(driver))
+dc_points_clear = customtkinter.CTkButton(button_frame_settings, text="Clear All", command=lambda: clear_all_scores(driver))
 dc_points_clear.grid(row=3, column=0, padx=(5, 5))
 
 roomcrash_button = customtkinter.CTkButton(button_frame_settings, text="Room Crash", command=lambda: roomcrash(driver))
@@ -499,27 +543,7 @@ def set_hotkey(event):
         hotkey = "Down"
         keyboard.add_hotkey(hotkey, lambda: upload_screenshot(driver))
 
-def change_twitch_hotkey():
-    twitch_status_label.configure(text="Listening...")
-    root.bind("<Key>", set_twitch_hotkey)
-    
-def set_twitch_hotkey(event):
-    global twitchhotkey
-    try:
-        if event.keysym == "Escape":
-            if twitchhotkey:
-                keyboard.remove_hotkey(twitchhotkey)
-            twitchhotkey = None
-            twitch_status_label.configure(text=f"Current: None")
-        else:
-            if twitchhotkey:
-                keyboard.remove_hotkey(hotkey)
-            twitchhotkey = event.keysym
-            keyboard.add_hotkey(twitchhotkey, lambda: upload_screenshot_twitch(driver))
-            twitch_status_label.configure(text=f"Current: {twitchhotkey}")
-        root.unbind("<Key>")
-    except ValueError:
-        twitch_status_label.configure(text=f"Invalid Hotkey")
+
 
     
 hotkeys_label = customtkinter.CTkLabel(tabview.tab("Settings"), text="Hotkeys")
@@ -535,16 +559,6 @@ if hotkey:
 else:
     status_label = customtkinter.CTkLabel(button_frame_hotkeys, text="Current: None", anchor="w")
 status_label.grid(row=3, column=0, padx=0, pady=(0, 0))
-
-change_twitch_hotkey_button = customtkinter.CTkButton(button_frame_hotkeys, text="Change Twitch Hotkey", command=change_twitch_hotkey)
-change_twitch_hotkey_button.grid(row=0, column=1, padx=(5, 5))
-
-if twitchhotkey:
-    twitch_status_label = customtkinter.CTkLabel(button_frame_hotkeys, text="Current: " + twitchhotkey, anchor="w")
-else:
-    twitch_status_label = customtkinter.CTkLabel(button_frame_hotkeys, text="Current: None", anchor="w")
-twitch_status_label.grid(row=3, column=1, padx=0, pady=(0, 0))
-
 
 image_label = customtkinter.CTkLabel(tabview.tab("Table Bot"), text="")
 image_label.grid(row=0, column=0, padx=(25,0), pady=10)
@@ -583,13 +597,11 @@ def send_to_clipboard():
     win32clipboard.SetClipboardData(win32clipboard.CF_DIB, data)
     win32clipboard.CloseClipboard()
 
-def copy_scores_to_clipboard(driver):
+def copy_scores_to_clipboard(scores_text):
     global my_tag
-    scores = driver.find_element(By.TAG_NAME, "textarea")
-    scoresvalue = scores.get_attribute("value")
     scoresfr = {}
     pattern = re.compile(r"^(.*?) (?:\[\w{2}\] )?(\d+(\+\d+)*)$")
-    for line in scoresvalue.split("\n"):
+    for line in scores_text.split("\n"):
         match = pattern.match(line)
         if match:
             name = match.group(1)
@@ -614,14 +626,12 @@ def copy_scores_to_clipboard(driver):
         out += f" || @{12 - (int(total_score / 82) + 1)} (missing {82 - (total_score % 82)} pts)"
     pyperclip.copy(out)
 
-def check_for_dc_points(driver):
+def check_for_dc_points(scores_text):
     global dc_score
     global dc_points
-    scores = driver.find_element(By.TAG_NAME, "textarea")
-    scoresvalue = scores.get_attribute("value")
     total = 0
     pattern = re.compile(r"^(.*?) (?:\[\w{2}\] )?(\d+(\+\d+)*)$")
-    for line in scoresvalue.split("\n"):
+    for line in scores_text.split("\n"):
         match = pattern.match(line)
         if match:
             score_str = match.group(2)
@@ -643,16 +653,14 @@ button_frame.grid(row=1, column=0, padx=(0, 0), pady=10)
 copy_button = customtkinter.CTkButton(button_frame, text="Copy Table", command=send_to_clipboard)
 copy_button.grid(row=0, column=0, padx=20, pady=0)
 
-copy_scores_button = customtkinter.CTkButton(button_frame, text="Copy Scores", command=lambda: copy_scores_to_clipboard(driver))
+copy_scores_button = customtkinter.CTkButton(button_frame, text="Copy Scores", command=lambda: copy_scores_to_clipboard(driver.find_element(By.TAG_NAME, "textarea").get_attribute("value")))
 copy_scores_button.grid(row=0, column=1, pady=0)
 
 missing_points_label = customtkinter.CTkLabel(tabview.tab("Table Bot"), text="")
 missing_points_label.grid(row=1, padx=(500,0), pady=(0,0))
 
-def add_dc_points(driver):
+def calculate_dc_points(scoresvalue):
     dc_scores = dc_points.split()
-    scores = driver.find_element(By.TAG_NAME, "textarea")
-    scoresvalue = scores.get_attribute("value")
     lines = scoresvalue.splitlines()[::-1]
     dc_helper = {}
     for team in dc_scores:
@@ -679,20 +687,8 @@ def add_dc_points(driver):
                 if "+" in line[-5:]:
                     line = re.sub(r'\+\d+$', '', line)
                 new_html.append(line)         
-
-    new_html = "\n".join(new_html)
-    scores.clear()  
-    scores.send_keys(new_html)
-    if game_mode == "MKWorld":
-        # Find the image by its unique base64 src attribute
-        image_element = driver.find_element(By.XPATH, "//img[starts-with(@src, 'data:image/png;base64,')]")
-    else:
-        images = driver.find_elements(By.TAG_NAME, "img")
-        image_element = images[7]
     
-    while True:
-        if image_element.get_attribute("style").split(";")[3].split(":")[1] == " 1":
-            break
+    return "\n".join(new_html[::-1])
 
 obs_overlay_not_active_scores = """ÍÍÍ''Ý!|¡¡įįį [au] 0"""
 
@@ -705,7 +701,6 @@ def upload_screenshot(driver):
         screenshot_data = BytesIO()
         screenshot.save(screenshot_data, format="PNG")
         screenshot_data.seek(0)
-
         temp_screenshot_path = os.path.join(os.path.expanduser("~"), datetime.now().strftime("%Y-%m-%d %H-%M-%S.png"))
         with open(temp_screenshot_path, "wb") as temp_screenshot_file:
             temp_screenshot_file.write(screenshot_data.read())
@@ -713,88 +708,68 @@ def upload_screenshot(driver):
         temp_screenshot_path = capture_image_from_obs_virtual_camera()
 
     try:
+        scoresvalue = ""
+        # This block ensures the "From screenshot" panel is open before we try to upload.
         if game_mode == "MKWorld":
-            # Ensure the "From screenshot" panel is open
             try:
                 driver.find_element(By.CSS_SELECTOR, "input[type='file']")
             except NoSuchElementException:
-                # If the input isn't found, the panel is likely closed. Click the button to open it.
                 from_screenshot_button = WebDriverWait(driver, 10).until(
                     lambda d: d.find_element(By.XPATH, "//button[contains(., 'From screenshot')]")
                 )
-                from_screenshot_button.click()
+                driver.execute_script("arguments[0].click();", from_screenshot_button)
         
         upload_element = driver.find_element(By.CSS_SELECTOR, "input[type='file']")
         upload_element.send_keys(temp_screenshot_path)
-
         pywinstyles.set_opacity(image_label, value=0.2)
-
-        # Wait for the textarea to appear first
-        scores = WebDriverWait(driver, 20).until(
+        
+        # 1. Wait for the initial OCR to complete.
+        scores_area = WebDriverWait(driver, 20).until(
             lambda d: d.find_element(By.TAG_NAME, "textarea")
         )
-
         if game_mode == "MKWorld":
-            # This loop waits for the OCR to finish by requiring the player count to be stable for several checks.
             last_line_count = -1
             stability_counter = 0
-            required_stable_checks = 2  # Require 2 stable checks (e.g., 2 * 1.5s = 3s of stability)
-
+            required_stable_checks = 3
             while True:
-                current_text = scores.get_attribute("value")
+                current_text = scores_area.get_attribute("value")
                 current_line_count = len([line for line in current_text.split('\n') if line.strip() != ''])
-
                 if current_line_count == last_line_count and current_line_count > 0:
                     stability_counter += 1
-                    print(f"Stability counter: {stability_counter}/{required_stable_checks}")
                 else:
-                    # The line count changed, so reset the stability counter.
                     stability_counter = 0
                     last_line_count = current_line_count
-
                 if stability_counter >= required_stable_checks:
-                    print(f"Table finished generating with {current_line_count} players.")
                     break
-                
-                time.sleep(1.5) # Check for an update every 1.5 seconds.
-            
-            # Now that the text is stable, find the final image
+                time.sleep(1.5)
+        
+        # 2. Get the initial OCR results for this race.
+        initial_scores_text = scores_area.get_attribute("value")
+
+        # 3. ALWAYS calculate the final cumulative scores for the overlay and clipboard.
+        scoresvalue = calculate_dc_points(initial_scores_text)
+        
+        # 4. Get the image for THIS RACE ONLY.
+        if game_mode == "MKWorld":
             image_element = driver.find_element(By.XPATH, "//img[starts-with(@src, 'data:image/png;base64,')]")
         else:
-            # Original logic for MK8DX
             images = driver.find_elements(By.TAG_NAME, "img")
             image_element = images[7]
-        scores = driver.find_element(By.TAG_NAME, "textarea")
-        scoresvalue = scores.get_attribute("value")
-        if "¹■" in scoresvalue or "¹ı■" in scoresvalue or "¹/" in scoresvalue:
-            print(scoresvalue)
-            scoresvalue = scoresvalue.replace("¹■", "VA")
-            scoresvalue = scoresvalue.replace("¹ı■", "VA")
-            scoresvalue = scoresvalue.replace("¹/", "V")
-            scores.clear()
-            scores.send_keys(scoresvalue)
+
+        # The rest of the function continues as before.
         if obs_overlay_not_active_scores in scoresvalue.replace("\n", ""):
             broke = True
             pywinstyles.set_opacity(image_label, value=1)
         else:
-            if dc_points != "":
-                add_dc_points(driver)
-            else: 
-                if game_mode == "MK8DX":
-                    scores.send_keys(" ")
-                    
             image_url = image_element.get_attribute("src")
-
             if image_url.startswith("data:image/png;base64,"):
                 base64_data = image_url.split(",")[1]
                 image_data = base64.b64decode(base64_data)
                 img = Image.open(BytesIO(image_data))
                 global currentimg
                 currentimg = img
-                
                 max_size = (600, 363)
                 img.thumbnail(max_size)
-
                 tableimg.configure(dark_image=img)
                 image_label.configure(image=tableimg)
                 image_label.image = tableimg
@@ -803,7 +778,6 @@ def upload_screenshot(driver):
         screenshot_image = Image.open(temp_screenshot_path)
         cropped_image = screenshot_image.crop((795, 0, 1875, 1080))
         cropped_image.save(temp_screenshot_path, format="PNG")
-
         ss_ctk_image = customtkinter.CTkImage(dark_image=cropped_image, size=(300, 300))
         recentss = currentss
         currentss = ss_ctk_image
@@ -811,124 +785,17 @@ def upload_screenshot(driver):
         recentss_image_label.configure(image=recentss)
         screenshot_image.close()
         
-
     finally:
         os.remove(temp_screenshot_path)
         if not broke:
+            # The cleanup functions use the FINAL, CUMULATIVE scores.
             if obs_overlay_active:
-                update_obs_overlay(driver)
-            check_for_dc_points(driver)
+                update_obs_overlay(scoresvalue)
+            check_for_dc_points(scoresvalue) 
             if autocopy == "Table":
                 send_to_clipboard()
             elif autocopy == "Scores":
-                copy_scores_to_clipboard(driver)
-
-
-def upload_screenshot_twitch(driver):
-    global tableimg
-    global recentss, currentss
-    screenshot = ImageGrab.grab()
-    cropped_image = screenshot.crop((left, top, right, bottom))
-    new_size = (1920, 1080)
-    screenshot = cropped_image.resize(new_size, Image.LANCZOS)
-    screenshot_data = BytesIO()
-    screenshot.save(screenshot_data, format="PNG")
-    screenshot_data.seek(0)
-
-
-    temp_screenshot_path = os.path.join(os.path.expanduser("~"), datetime.now().strftime("%Y-%m-%d %H-%M-%S"))
-    with open(temp_screenshot_path, "wb") as temp_screenshot_file:
-        temp_screenshot_file.write(screenshot_data.read())
-
-    try:
-        upload_element = driver.find_element(By.CSS_SELECTOR, "input[type='file']")
-        upload_element.send_keys(temp_screenshot_path)
-        pywinstyles.set_opacity(image_label, value=0.2)
-        # Wait for the textarea to appear first
-        scores = WebDriverWait(driver, 20).until(
-            lambda d: d.find_element(By.TAG_NAME, "textarea")
-        )
-
-        if game_mode == "MKWorld":
-            # This loop waits for the OCR to finish by requiring the player count to be stable for several checks.
-            last_line_count = -1
-            stability_counter = 0
-            required_stable_checks = 2  # Require 2 stable checks (e.g., 2 * 1.5s = 3s of stability)
-
-            while True:
-                current_text = scores.get_attribute("value")
-                current_line_count = len([line for line in current_text.split('\n') if line.strip() != ''])
-
-                if current_line_count == last_line_count and current_line_count > 0:
-                    stability_counter += 1
-                    print(f"Stability counter: {stability_counter}/{required_stable_checks}")
-                else:
-                    # The line count changed, so reset the stability counter.
-                    stability_counter = 0
-                    last_line_count = current_line_count
-
-                if stability_counter >= required_stable_checks:
-                    print(f"Table finished generating with {current_line_count} players.")
-                    break
-                
-                time.sleep(1.5) # Check for an update every 1.5 seconds.
-            
-            # Now that the text is stable, find the final image
-            image_element = driver.find_element(By.XPATH, "//img[starts-with(@src, 'data:image/png;base64,')]")
-        else:
-            # Original logic for MK8DX
-            images = driver.find_elements(By.TAG_NAME, "img")
-            image_element = images[7]
-        scoresvalue = scores.get_attribute("value")
-        if "¹■" in scoresvalue or "¹ı■" in scoresvalue:
-            scoresvalue = scoresvalue.replace("¹■", "VA")
-            scoresvalue = scoresvalue.replace("¹ı■", "VA")
-            scores.clear()
-            scores.send_keys(scoresvalue)
-        if dc_points != "":
-            add_dc_points(driver)
-        else: 
-            if game_mode == "MK8DX":
-                scores.send_keys(" ")
-        
-        image_url = image_element.get_attribute("src")
-
-        if image_url.startswith("data:image/png;base64,"):
-            base64_data = image_url.split(",")[1]
-            image_data = base64.b64decode(base64_data)
-            img = Image.open(BytesIO(image_data))
-            global currentimg
-            currentimg = img
-
-            max_size = (600, 363)
-            img.thumbnail(max_size)
-
-            tableimg.configure(dark_image=img)
-            image_label.configure(image=tableimg)
-            image_label.image = tableimg
-            pywinstyles.set_opacity(image_label, value=1)
-        
-        screenshot_image = Image.open(temp_screenshot_path)
-        cropped_image = screenshot_image.crop((795, 0, 1875, 1080))
-        cropped_image.save(temp_screenshot_path, format="PNG")
-
-        ss_ctk_image = customtkinter.CTkImage(dark_image=cropped_image, size=(300, 300))
-        recentss = currentss
-        currentss = ss_ctk_image
-        currentss_image_label.configure(image=currentss)
-        recentss_image_label.configure(image=recentss)
-        screenshot_image.close()
-        
-
-    finally:
-        os.remove(temp_screenshot_path)
-        if obs_overlay_active:
-            update_obs_overlay(driver)
-        check_for_dc_points(driver)
-        if autocopy == "Table":
-            send_to_clipboard()
-        elif autocopy == "Scores":
-            copy_scores_to_clipboard(driver)
+                copy_scores_to_clipboard(scoresvalue)
 
 
 obs_overlay_window = None
@@ -956,7 +823,7 @@ def toggle_obs(driver):
         obs_overlay_active = True
         obs_overlay_window.protocol("WM_DELETE_WINDOW", close_obs)
         if currentimg != 0:
-            update_obs_overlay(driver)
+            update_obs_overlay(driver.find_element(By.TAG_NAME, "textarea").get_attribute("value"))
         else: 
             resetoverlay(driver)
             
@@ -1025,13 +892,11 @@ placeholder_4v4_data = b"""iVBORw0KGgoAAAANSUhEUgAAAYYAAAB9CAYAAACmosSLAAAAAXNSR
 placeholder_4v4_imagetk = ImageTk.PhotoImage(Image.open(BytesIO(base64.b64decode(placeholder_4v4_data))))
 
 
-def update_obs_overlay(driver):
+def update_obs_overlay(scores_text):
     global obs_overlay_window, my_tag
-    scores = driver.find_element(By.TAG_NAME, "textarea")
-    scoresvalue = scores.get_attribute("value")
     scoresfr = {}
     pattern = re.compile(r"^(.*?) (?:\[\w{2}\] )?(\d+(\+\d+)*)$")
-    for line in scoresvalue.split("\n"):
+    for line in scores_text.split("\n"):
         match = pattern.match(line)
         if match:
             name = match.group(1).lstrip()
@@ -1133,16 +998,22 @@ def update_obs_overlay(driver):
 
 def resetoverlay(driver):
     scores = driver.find_element(By.TAG_NAME, "textarea")
+
+    if game_mode == "MKWorld":
+        driver.execute_script("arguments[0].readOnly=false;", scores)
+
     scores.clear()
     scores.send_keys(" ")
 
+    time.sleep(1.0)
+
+    # Now, find the new blank image and update the UI.
     if game_mode == "MKWorld":
-        # Find the image by its unique base64 src attribute
         image_element = driver.find_element(By.XPATH, "//img[starts-with(@src, 'data:image/png;base64,')]")
     else:
         images = driver.find_elements(By.TAG_NAME, "img")
         image_element = images[7]
-    time.sleep(0.1)
+        
     image_url = image_element.get_attribute("src") 
     if image_url.startswith("data:image/png;base64,"):
         base64_data = image_url.split(",")[1]
@@ -1154,6 +1025,7 @@ def resetoverlay(driver):
         image_label.configure(image=tableimg)
         image_label.image = tableimg
         if obs_overlay_active:
+            # Code to reset the OBS overlay to its default state
             imageholder_canvas = customtkinter.CTkCanvas(master=obs_overlay_window, width=780, height=125, bg="green", highlightthickness = 0)
             imageholder_canvas.place(x=0, y=0)
             imageholder_canvas.create_image((0, 0), image=placeholder_2v2_imagetk, anchor="nw")
@@ -1161,19 +1033,17 @@ def resetoverlay(driver):
                 x_position = (i * 130) + 65  
                 imageholder_canvas.create_text((x_position, 22), text="-", font=tagsfont, anchor="center", fill="white")
                 imageholder_canvas.create_text((x_position, 67), text="0", font=scoresfont, anchor="center", fill="white")
-
             for i in range(5): 
                 x_position_1 = (i * 130) + 65 
                 x_position_2 = ((i + 1) * 130) + 65  
-
                 diff_x_position = (x_position_1 + x_position_2) / 2  
                 diff_y_position =  90 + (35 // 2)
-
                 imageholder_canvas.create_text((diff_x_position, diff_y_position), text="+0", font=smallerfont, anchor="center", fill="white")
                 imageholder_canvas.create_text((720,(90 + 35 // 2)), text=f"@12", font=smallerfont, anchor="center", fill="medium purple")
-        global currentimg
-        currentimg = 0
-        check_for_dc_points(driver)
+                
+    global currentimg
+    currentimg = 0
+    check_for_dc_points(" ") # Pass empty scores to reset labels
 
 reset_button = customtkinter.CTkButton(tabview.tab("Settings"), command=lambda: resetoverlay(driver), text="Reset Scores") 
 reset_button.grid(row=12, column=1, pady=(10,0))
@@ -1206,7 +1076,6 @@ def reinitialize_driver():
     except NoSuchElementException:
         print("Do not consent button not found. Proceeding without it.")
 
-    # --- Start of Final Fix ---
     if game_mode == "MKWorld":
         # On the MKWorld site, we must click "From screenshot" first
         from_screenshot_button = WebDriverWait(driver, 10).until(
@@ -1266,7 +1135,7 @@ if __name__ == "__main__":
 
     print("setting up ui")
     def on_closing():
-        if hotkey != "Multi_key" and twitchhotkey !="Multi_key":
+        if hotkey != "Multi_key":
             save_settings()
         driver.quit()
         root.destroy()
@@ -1276,8 +1145,6 @@ if __name__ == "__main__":
     try:
         if hotkey:
             keyboard.add_hotkey(hotkey, lambda: upload_screenshot(driver))
-        if twitchhotkey:
-            keyboard.add_hotkey(twitchhotkey, lambda: upload_screenshot_twitch(driver))
     except ValueError:
         reset_settings()
         keyboard.add_hotkey(hotkey, lambda: upload_screenshot(driver))
