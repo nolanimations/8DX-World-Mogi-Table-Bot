@@ -394,7 +394,7 @@ def set_dc_points(driver):
                 initial_src = ""
             last_src = initial_src
             stability_counter = 0
-            required_stable_checks = 2
+            required_stable_checks = 3
             loop_failsafe = 0
             while True:
                 image_element = WebDriverWait(driver, 5).until(lambda d: d.find_element(By.XPATH, "//img[starts-with(@src, 'data:image/png;base64,')]"))
