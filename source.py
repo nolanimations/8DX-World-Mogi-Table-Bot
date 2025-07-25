@@ -1,6 +1,7 @@
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import Select, WebDriverWait
+from selenium.common.exceptions import NoSuchElementException, TimeoutException
 import customtkinter
 import keyboard
 from PIL import Image, ImageGrab, ImageTk
@@ -355,7 +356,8 @@ def set_my_tag():
     my_tag = my_tag_field.get().strip().upper()
     save_settings()
     if obs_overlay_active:
-        update_obs_overlay(driver)
+        scores_text = driver.find_element(By.TAG_NAME, "textarea").get_attribute("value")
+        update_obs_overlay(scores_text)
 
 my_tag_button = customtkinter.CTkButton(
     tabview.tab("Settings"),
@@ -709,7 +711,6 @@ def upload_screenshot(driver):
 
     try:
         scoresvalue = ""
-        # This block ensures the "From screenshot" panel is open before we try to upload.
         if game_mode == "MKWorld":
             try:
                 driver.find_element(By.CSS_SELECTOR, "input[type='file']")
@@ -723,40 +724,48 @@ def upload_screenshot(driver):
         upload_element.send_keys(temp_screenshot_path)
         pywinstyles.set_opacity(image_label, value=0.2)
         
-        # 1. Wait for the initial OCR to complete.
-        scores_area = WebDriverWait(driver, 20).until(
-            lambda d: d.find_element(By.TAG_NAME, "textarea")
-        )
-        if game_mode == "MKWorld":
-            last_line_count = -1
-            stability_counter = 0
-            required_stable_checks = 3
-            while True:
-                current_text = scores_area.get_attribute("value")
-                current_line_count = len([line for line in current_text.split('\n') if line.strip() != ''])
-                if current_line_count == last_line_count and current_line_count > 0:
-                    stability_counter += 1
-                else:
-                    stability_counter = 0
-                    last_line_count = current_line_count
-                if stability_counter >= required_stable_checks:
-                    break
-                time.sleep(1.5)
-        
-        # 2. Get the initial OCR results for this race.
-        initial_scores_text = scores_area.get_attribute("value")
+        try:
+            scores_area = WebDriverWait(driver, 12).until(
+                lambda d: d.find_element(By.TAG_NAME, "textarea") if d.find_element(By.TAG_NAME, "textarea").get_attribute("value").strip() != "" else False
+            )
 
-        # 3. ALWAYS calculate the final cumulative scores for the overlay and clipboard.
+            if game_mode == "MKWorld":
+                last_line_count = -1
+                stability_counter = 0
+                required_stable_checks = 3
+                while True:
+                    current_text = scores_area.get_attribute("value")
+                    current_line_count = len([line for line in current_text.split('\n') if line.strip() != ''])
+                    if current_line_count == last_line_count and current_line_count > 0:
+                        stability_counter += 1
+                    else:
+                        stability_counter = 0
+                        last_line_count = current_line_count
+                    if stability_counter >= required_stable_checks:
+                        break
+                    time.sleep(1.5)
+            
+            initial_scores_text = scores_area.get_attribute("value")
+
+        except TimeoutException:
+            print("OCR timed out or failed to produce a result. Resetting view.")
+            black_img = Image.new("RGB", (600, 363), color="black")
+            tableimg.configure(dark_image=black_img)
+            image_label.configure(image=tableimg)
+            image_label.image = tableimg
+            pywinstyles.set_opacity(image_label, value=1)
+            # Exit the function early
+            return
+
+        # The rest of the function continues as before, only running on success.
         scoresvalue = calculate_dc_points(initial_scores_text)
         
-        # 4. Get the image for THIS RACE ONLY.
         if game_mode == "MKWorld":
             image_element = driver.find_element(By.XPATH, "//img[starts-with(@src, 'data:image/png;base64,')]")
         else:
             images = driver.find_elements(By.TAG_NAME, "img")
             image_element = images[7]
 
-        # The rest of the function continues as before.
         if obs_overlay_not_active_scores in scoresvalue.replace("\n", ""):
             broke = True
             pywinstyles.set_opacity(image_label, value=1)
@@ -788,7 +797,6 @@ def upload_screenshot(driver):
     finally:
         os.remove(temp_screenshot_path)
         if not broke:
-            # The cleanup functions use the FINAL, CUMULATIVE scores.
             if obs_overlay_active:
                 update_obs_overlay(scoresvalue)
             check_for_dc_points(scoresvalue) 
@@ -1000,47 +1008,35 @@ def resetoverlay(driver):
     scores = driver.find_element(By.TAG_NAME, "textarea")
 
     if game_mode == "MKWorld":
-        driver.execute_script("arguments[0].readOnly=false;", scores)
-
-    scores.clear()
-    scores.send_keys(" ")
-
-    time.sleep(1.0)
-
-    # Now, find the new blank image and update the UI.
-    if game_mode == "MKWorld":
-        image_element = driver.find_element(By.XPATH, "//img[starts-with(@src, 'data:image/png;base64,')]")
+        driver.execute_script("arguments[0].value = ' ';", scores)
     else:
-        images = driver.find_elements(By.TAG_NAME, "img")
-        image_element = images[7]
-        
-    image_url = image_element.get_attribute("src") 
-    if image_url.startswith("data:image/png;base64,"):
-        base64_data = image_url.split(",")[1]
-        image_data = base64.b64decode(base64_data)
-        img = Image.open(BytesIO(image_data))
-        max_size = (600, 363)
-        img.thumbnail(max_size) 
-        tableimg.configure(dark_image=img)
-        image_label.configure(image=tableimg)
-        image_label.image = tableimg
-        if obs_overlay_active:
-            # Code to reset the OBS overlay to its default state
-            imageholder_canvas = customtkinter.CTkCanvas(master=obs_overlay_window, width=780, height=125, bg="green", highlightthickness = 0)
-            imageholder_canvas.place(x=0, y=0)
-            imageholder_canvas.create_image((0, 0), image=placeholder_2v2_imagetk, anchor="nw")
-            for i in range(6): #2v2
-                x_position = (i * 130) + 65  
-                imageholder_canvas.create_text((x_position, 22), text="-", font=tagsfont, anchor="center", fill="white")
-                imageholder_canvas.create_text((x_position, 67), text="0", font=scoresfont, anchor="center", fill="white")
-            for i in range(5): 
-                x_position_1 = (i * 130) + 65 
-                x_position_2 = ((i + 1) * 130) + 65  
-                diff_x_position = (x_position_1 + x_position_2) / 2  
-                diff_y_position =  90 + (35 // 2)
-                imageholder_canvas.create_text((diff_x_position, diff_y_position), text="+0", font=smallerfont, anchor="center", fill="white")
-                imageholder_canvas.create_text((720,(90 + 35 // 2)), text=f"@12", font=smallerfont, anchor="center", fill="medium purple")
-                
+        scores.clear()
+        scores.send_keys(" ")
+
+
+    black_img = Image.new("RGB", (600, 363), color="black")
+    tableimg.configure(dark_image=black_img)
+    image_label.configure(image=tableimg)
+    image_label.image = tableimg
+
+    if obs_overlay_active:
+        imageholder_canvas = customtkinter.CTkCanvas(master=obs_overlay_window, width=780, height=125, bg="green", highlightthickness = 0)
+        imageholder_canvas.place(x=0, y=0)
+        imageholder_canvas.create_image((0, 0), image=placeholder_2v2_imagetk, anchor="nw")
+        for i in range(6): #2v2
+            x_position = (i * 130) + 65
+            imageholder_canvas.create_text((x_position, 22), text="-", font=tagsfont, anchor="center", fill="white")
+            imageholder_canvas.create_text((x_position, 67), text="0", font=scoresfont, anchor="center", fill="white")
+        for i in range(5):
+            x_position_1 = (i * 130) + 65
+            x_position_2 = ((i + 1) * 130) + 65
+            diff_x_position = (x_position_1 + x_position_2) / 2
+            diff_y_position =  90 + (35 // 2)
+            imageholder_canvas.create_text((diff_x_position, diff_y_position), text="+0", font=smallerfont, anchor="center", fill="white")
+            imageholder_canvas.create_text((720,(90 + 35 // 2)), text=f"@12", font=smallerfont, anchor="center", fill="medium purple")
+
+            
+    # Reset internal state variables
     global currentimg
     currentimg = 0
     check_for_dc_points(" ") # Pass empty scores to reset labels
