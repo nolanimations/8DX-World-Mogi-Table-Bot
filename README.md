@@ -4,11 +4,8 @@
 
 This fork of the Mogi Table Bot introduces experimental support for generating tables from *Mario Kart World* screenshots.
 
-To use this feature, you **must** select `MKWorld` mode in the **Settings** tab.
-
-<p align="center">
-  <img width="285" height="117" alt="MKWorld Setting" src="https://github.com/user-attachments/assets/b031a79a-dbfe-43ec-a3ed-0f50230f6577" />
-</p> 
+To use this, you **must** use the `MKWorld-MogiTableBot.exe` file in the [latest release](https://github.com/nolanimations/8DX-World-Mogi-Table-Bot/releases).
+You can use the old MK8DX version with `MK8DX-MogiTableBot.exe`.
 
 ### Important Notes & Limitations for MKWorld Mode:
 
