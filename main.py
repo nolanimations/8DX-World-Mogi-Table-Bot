@@ -45,7 +45,7 @@ class MogiTableBot:
         self.autocopy = settings.get("autocopy", "Disabled")
         self.using_obs_virtual_cam = settings.get("using_obs_virtual_cam", False)
         self.obs_overlay_active = settings.get("obs_overlay_active", False)
-        self.game_mode = settings.get("game_mode", "MK8DX")
+        self.game_mode = "MKWorld"
         self.my_tag = settings.get("my_tag", "")
 
     def update_main_table_image_on_startup(self):
@@ -86,13 +86,6 @@ class MogiTableBot:
 
     def upload_screenshot_action(self):
         actions.upload_screenshot(self)
-
-    def switch_game_mode_action(self, value):
-        if self.game_mode == value:
-            return
-        self.game_mode = value
-        self.driver = selenium_handler.reinitialize_driver(self.driver, self.game_mode)
-        self.update_main_table_image_on_startup()
         
     def set_autocopy_action(self, choice):
         self.autocopy = choice

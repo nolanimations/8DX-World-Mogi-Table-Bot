@@ -24,7 +24,7 @@ class UIBuilder:
     def setup_window(self):
         self.root.geometry("820x700")
         self.root.minsize(820, 700)
-        self.root.title("Mogi Table Bot")
+        self.root.title("MKWorld Mogi Table Bot")
         self.root.resizable(False, False)
         
         icon_image = Image.open(BytesIO(base64.b64decode(self.icon_data)))
@@ -67,11 +67,6 @@ class UIBuilder:
     def create_settings_tab(self):
         tab = self.tabview.tab("Settings")
         tab.grid_columnconfigure((0, 2), weight=1)
-        
-        game_mode_label = customtkinter.CTkLabel(tab, text="Game Mode", anchor="center")
-        game_mode_label.grid(row=0, column=1, pady=(5, 0))
-        self.game_mode_switcher = customtkinter.CTkSegmentedButton(tab, values=["MK8DX", "MKWorld"], command=self.app.switch_game_mode_action)
-        self.game_mode_switcher.grid(row=1, column=1, pady=(0, 10))
 
         auto_copy_label = customtkinter.CTkLabel(tab, text="Auto Copy to Clipboard", anchor="center")
         auto_copy_label.grid(row=2, column=1, pady=(5, 0))
@@ -141,13 +136,10 @@ class UIBuilder:
         infotext_content = (
             "Press Hotkey once you're on the sorted race results screen or the points finished adding up\n"
             "Only enter the first Letter of Tag for DC Points (in this format: A10 B10 C10 D10 E10 F10)\n"
-            "Use the normal Hotkey if youre using OBS method or watching Fullscreen (recommended)\n"
-            "Use the Twitch Hotkey if youre watching twitch with chat opened (highly experimental)\n"
-            "Twitch Mode might not work if youre not on Chrome and dont have something in your bookmarks \n"
-            "(might not even work then)\n\n"
+            "Use the Hotkey if youre using OBS method or watching Fullscreen\n"
             "Made by tarek, fork by Nolanimations\n"
             "using https://gb.hlorenzi.com/table and https://gb2.hlorenzi.com/table\n\n"
-            "v0.3"
+            "v0.4"
         )
         infotext = customtkinter.CTkTextbox(tab, width=620, height=250)
         infotext.grid(row=0, column=0, padx=20, pady=20, sticky="nsew")
@@ -158,7 +150,6 @@ class UIBuilder:
         self.status_label.configure(text=f"Current: {new_hotkey or 'None'}")
 
     def sync_settings(self):
-        self.game_mode_switcher.set(self.app.game_mode)
         self.auto_copy_menu.set(self.app.autocopy)
         self.my_tag_field.delete(0, "end")
         if self.app.my_tag:

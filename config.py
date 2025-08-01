@@ -180,7 +180,7 @@ def get_default_settings():
         "autocopy": "Disabled",
         "using_obs_virtual_cam": False,
         "obs_overlay_active": False,
-        "game_mode": "MK8DX",
+        "game_mode": "MKWorld",
         "my_tag": ""
     }
 
