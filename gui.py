@@ -139,7 +139,7 @@ class UIBuilder:
             "Use the Hotkey if youre using OBS method or watching Fullscreen\n"
             "Made by tarek, fork by Nolanimations\n"
             "using https://gb.hlorenzi.com/table and https://gb2.hlorenzi.com/table\n\n"
-            "v0.4"
+            "v0.5"
         )
         infotext = customtkinter.CTkTextbox(tab, width=620, height=250)
         infotext.grid(row=0, column=0, padx=20, pady=20, sticky="nsew")
