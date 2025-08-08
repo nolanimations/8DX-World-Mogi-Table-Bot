@@ -16,11 +16,13 @@ You can use the old MK8DX version with `MK8DX-MogiTableBot.exe`.
 
 ## DC Wizard (11-player race corrections)
 
+<img width="1270" height="747" alt="DC Wizard" src="https://github.com/user-attachments/assets/d1c01f4f-ac76-4935-90ca-87d6c93b0dd2" />
+
 The bot includes a **DC Wizard** to fix scores for races where **exactly one player disconnects** (so the results screen shows **11 players**). It does not modify screenshots; instead it adds compensation to your **DC Points** field so corrections apply to **all future screenshots** until you clear them.
 
 ### What it does
 - Works with **12-player rooms** only and **one DC per race** (11 players shown on results).
-- Uses your last **clean 12-player** screenshot (same number of `+` chunks on every line) to cache the roster.
+- Uses your last **clean 12-player** screenshot to cache the roster.
 - You tell it:
   - **Who disconnected**
   - **Who got 1st**
@@ -65,10 +67,9 @@ These are summed **per tag** and added to your DC Points field.
 - **One DC per race** only (11-player result). Multi-DC in the same race isn’t supported yet.
 - If you **skip screenshots**, that’s fine—the wizard works off the cached 12p roster and updates your DC Points field; future screenshots will include the cumulative corrections.
 - If you run the wizard **twice for the same race**, it will double-add (because it’s cumulative). If that happens, just edit/clear the DC field.
-- Names shown in the wizard come from Lorenzi’s **textarea** (full names), not the PNG abbreviations. Tags are inferred from the **first character** (`'8'` is treated as `'B'`).
 - To discard all corrections, **clear the DC Points field** in Settings.
 
-If you encounter any issues or have suggestions regarding the MKWorld implementation, contact me on Discord: @nolanimations
+If you encounter any issues or have suggestions regarding the MKWorld implementation, contact me on Discord: `@nolanimations`
 
 ## Highlight Tag
 
