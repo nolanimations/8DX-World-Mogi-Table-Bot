@@ -17,6 +17,86 @@ import pywinstyles
 import obs_handler
 import selenium_handler
 
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.common.exceptions import NoSuchElementException, TimeoutException
+
+# --- SPEED HELPERS ---
+
+def _normalize_scores_text(s: str) -> str:
+    """Normalize Lorenzi textarea content to compare meaningfully."""
+    if not s:
+        return ""
+    s = s.replace("\r", "").strip()
+    # Trim trailing spaces per line but keep order; Lorenzi cares about lines
+    return "\n".join(line.rstrip() for line in s.split("\n"))
+
+def _get_table_img_el(driver, game_mode):
+    if game_mode == "MKWorld":
+        return driver.find_element(By.XPATH, "//img[starts-with(@src, 'data:image/png;base64,')]")
+    else:
+        images = driver.find_elements(By.TAG_NAME, "img")
+        return images[7]
+
+def get_table_image_src(app):
+    try:
+        img = _get_table_img_el(app.driver, app.game_mode)
+        return img.get_attribute("src") or ""
+    except Exception:
+        return ""
+
+def set_textarea_and_dispatch(app, new_text):
+    """Make textarea editable, set value, dispatch events."""
+    ta = app.driver.find_element(By.TAG_NAME, "textarea")
+    app.driver.execute_script("""
+        const ta = arguments[0], v = arguments[1];
+        if (ta.readOnly) ta.readOnly = false;
+        if (ta.disabled) ta.disabled = false;
+        if (ta.value === v) {
+          // No change, do nothing
+          return;
+        }
+        ta.value = v;
+        ta.dispatchEvent(new Event('input', {bubbles:true}));
+        ta.dispatchEvent(new Event('change', {bubbles:true}));
+    """, ta, new_text)
+
+def wait_for_table_image_change_async(app, previous_src, timeout_ms=5000):
+    """Prefer a page-side MutationObserver for instant wake-up."""
+    try:
+        img = _get_table_img_el(app.driver, app.game_mode)
+    except Exception:
+        return False
+    try:
+        return bool(app.driver.execute_async_script("""
+            const img = arguments[0], prev = arguments[1], timeoutMs = arguments[2], done = arguments[3];
+            function ready() {
+              return img && img.src && img.src.startsWith('data:image/png;base64,')
+                     && (!prev || img.src !== prev);
+            }
+            if (ready()) { done(true); return; }
+            const obs = new MutationObserver(() => { if (ready()) { obs.disconnect(); done(true); }});
+            obs.observe(img, { attributes: true, attributeFilter: ['src'] });
+            setTimeout(() => { try { obs.disconnect(); } catch(e){} done(false); }, timeoutMs);
+        """, img, previous_src, int(timeout_ms)))
+    except Exception:
+        return False
+
+def wait_for_table_image_change(app, previous_src, timeout=6, poll_frequency=0.1):
+    """Small timeout + fast poll; used as a fallback."""
+    def changed(driver):
+        try:
+            img = _get_table_img_el(driver, app.game_mode)
+            src = img.get_attribute("src") or ""
+            if not src.startswith("data:image/png;base64,"):
+                return False
+            return (not previous_src) or (src != previous_src)
+        except Exception:
+            return False
+
+    WebDriverWait(app.driver, timeout, poll_frequency=poll_frequency).until(changed)
+
+
 def upload_screenshot(app):
     temp_screenshot_path = None
     try:
@@ -57,6 +137,20 @@ def upload_screenshot(app):
 
         scoresvalue = calculate_dc_points(app.dc_points, initial_scores_text)
         
+        # Only force a re-render if the DC math actually changes the text
+        if _normalize_scores_text(scoresvalue) != _normalize_scores_text(initial_scores_text):
+            try:
+                previous_src = get_table_image_src(app)
+                set_textarea_and_dispatch(app, scoresvalue)
+                changed = wait_for_table_image_change_async(app, previous_src, timeout_ms=5000)
+                if not changed:
+                    try:
+                        wait_for_table_image_change(app, previous_src, timeout=5, poll_frequency=0.1)
+                    except TimeoutException:
+                        pass
+            except NoSuchElementException:
+                pass
+
         broke = "ÍÍÍ''Ý!|¡¡įįį [au] 0" in scoresvalue.replace("\n", "")
         if broke:
             pywinstyles.set_opacity(app.ui.image_label, value=1)
@@ -141,20 +235,40 @@ def set_dc_points(app):
         return
 
     pywinstyles.set_opacity(app.ui.image_label, value=0.2)
+
     scores_area = app.driver.find_element(By.TAG_NAME, "textarea")
     current_scores_text = scores_area.get_attribute("value")
     final_scores_text = calculate_dc_points(app.dc_points, current_scores_text)
-    
-    if app.game_mode == "MKWorld":
-        app.driver.execute_script("arguments[0].readOnly=false;", scores_area)
-    
-    scores_area.clear()
-    scores_area.send_keys(final_scores_text)
-    
-    time.sleep(1.5) 
+
+    # FAST PATH: if nothing changes, skip re-render/waits
+    if _normalize_scores_text(final_scores_text) == _normalize_scores_text(current_scores_text):
+        # Keep downstream behavior consistent (overlay/clipboard/DC check)
+        if app.obs_overlay_active:
+            obs_handler.update_obs_overlay(app, final_scores_text)
+        check_for_dc_points(app, final_scores_text)
+        if app.autocopy == "Scores":
+            copy_scores_to_clipboard(final_scores_text, app.my_tag)
+        if app.autocopy == "Table":
+            # Table PNG is already current; just copy it if requested
+            send_to_clipboard(app.currentimg)
+        pywinstyles.set_opacity(app.ui.image_label, value=1)
+        return
+
+    # SLOW PATH: apply text, wait for PNG to actually update
+    previous_src = get_table_image_src(app)
+    set_textarea_and_dispatch(app, final_scores_text)
+
+    # First try MutationObserver wait (snappy), then fallback polling
+    changed = wait_for_table_image_change_async(app, previous_src, timeout_ms=5000)
+    if not changed:
+        try:
+            wait_for_table_image_change(app, previous_src, timeout=5, poll_frequency=0.1)
+        except TimeoutException:
+            pass
 
     update_main_image_from_driver(app)
-    
+
+
     if app.obs_overlay_active:
         obs_handler.update_obs_overlay(app, final_scores_text)
     check_for_dc_points(app, final_scores_text)
