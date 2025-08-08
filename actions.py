@@ -7,6 +7,7 @@ import win32clipboard
 from datetime import datetime
 from io import BytesIO
 import customtkinter
+import mkw_dc_wizard
 
 from PIL import Image, ImageGrab
 from selenium.webdriver.common.by import By
@@ -21,14 +22,10 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.common.exceptions import NoSuchElementException, TimeoutException
 
-# --- SPEED HELPERS ---
-
 def _normalize_scores_text(s: str) -> str:
-    """Normalize Lorenzi textarea content to compare meaningfully."""
     if not s:
         return ""
     s = s.replace("\r", "").strip()
-    # Trim trailing spaces per line but keep order; Lorenzi cares about lines
     return "\n".join(line.rstrip() for line in s.split("\n"))
 
 def _get_table_img_el(driver, game_mode):
@@ -46,7 +43,6 @@ def get_table_image_src(app):
         return ""
 
 def set_textarea_and_dispatch(app, new_text):
-    """Make textarea editable, set value, dispatch events."""
     ta = app.driver.find_element(By.TAG_NAME, "textarea")
     app.driver.execute_script("""
         const ta = arguments[0], v = arguments[1];
@@ -62,7 +58,7 @@ def set_textarea_and_dispatch(app, new_text):
     """, ta, new_text)
 
 def wait_for_table_image_change_async(app, previous_src, timeout_ms=5000):
-    """Prefer a page-side MutationObserver for instant wake-up."""
+    # Prefer a page-side MutationObserver for instant wake-up
     try:
         img = _get_table_img_el(app.driver, app.game_mode)
     except Exception:
@@ -83,7 +79,6 @@ def wait_for_table_image_change_async(app, previous_src, timeout_ms=5000):
         return False
 
 def wait_for_table_image_change(app, previous_src, timeout=6, poll_frequency=0.1):
-    """Small timeout + fast poll; used as a fallback."""
     def changed(driver):
         try:
             img = _get_table_img_el(driver, app.game_mode)
@@ -129,6 +124,11 @@ def upload_screenshot(app):
                 wait_for_mkworld_stability(app.driver, scores_area)
             
             initial_scores_text = scores_area.get_attribute("value")
+            # Cache a roster if current textarea is a clean 12p result
+            try:
+                mkw_dc_wizard.cache_12p_roster(app, initial_scores_text)
+            except Exception as e:
+                print("[DCW] cache error:", e)
 
         except TimeoutException:
             print("OCR timed out or failed. Resetting view.")
@@ -240,25 +240,22 @@ def set_dc_points(app):
     current_scores_text = scores_area.get_attribute("value")
     final_scores_text = calculate_dc_points(app.dc_points, current_scores_text)
 
-    # FAST PATH: if nothing changes, skip re-render/waits
+    # Fast
     if _normalize_scores_text(final_scores_text) == _normalize_scores_text(current_scores_text):
-        # Keep downstream behavior consistent (overlay/clipboard/DC check)
         if app.obs_overlay_active:
             obs_handler.update_obs_overlay(app, final_scores_text)
         check_for_dc_points(app, final_scores_text)
         if app.autocopy == "Scores":
             copy_scores_to_clipboard(final_scores_text, app.my_tag)
         if app.autocopy == "Table":
-            # Table PNG is already current; just copy it if requested
             send_to_clipboard(app.currentimg)
         pywinstyles.set_opacity(app.ui.image_label, value=1)
         return
 
-    # SLOW PATH: apply text, wait for PNG to actually update
+    # Slow
     previous_src = get_table_image_src(app)
     set_textarea_and_dispatch(app, final_scores_text)
 
-    # First try MutationObserver wait (snappy), then fallback polling
     changed = wait_for_table_image_change_async(app, previous_src, timeout_ms=5000)
     if not changed:
         try:

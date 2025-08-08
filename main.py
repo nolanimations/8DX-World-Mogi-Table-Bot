@@ -8,6 +8,7 @@ import gui
 import selenium_handler
 import obs_handler
 import actions
+import mkw_dc_wizard
 
 class MogiTableBot:
     def __init__(self):
@@ -167,6 +168,10 @@ class MogiTableBot:
         settings = config.reset_settings_file()
         self.load_and_apply_settings()
         self.ui.sync_settings()
+    
+    def open_dc_wizard_action(self):
+        mkw_dc_wizard.open_dc_wizard(self)
+
 
 
 if __name__ == "__main__":

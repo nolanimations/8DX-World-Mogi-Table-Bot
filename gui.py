@@ -3,6 +3,7 @@ from PIL import Image, ImageTk
 from io import BytesIO
 import base64
 
+
 class UIBuilder:
     def __init__(self, root, app):
         self.root = root
@@ -113,6 +114,13 @@ class UIBuilder:
         
         self.using_obs_virtual_cam_checkbox = customtkinter.CTkCheckBox(tab, text="Using OBS Virtual Camera", command=self.app.toggle_obs_virtual_cam_action)
         self.using_obs_virtual_cam_checkbox.grid(row=14, column=1, pady=(15, 0))
+
+        self.dcw_button = customtkinter.CTkButton(
+            tab,
+            text="DC Wizard (11-player race)",
+            command=self.app.open_dc_wizard_action
+        )
+        self.dcw_button.grid(row=15, column=1, columnspan=1, sticky="ew", pady=(6, 0))
 
     def create_screenshots_tab(self):
         tab = self.tabview.tab("Screenshots")
